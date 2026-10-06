@@ -231,6 +231,8 @@ details[open]>summary::after{transform:rotate(225deg);margin-top:3px}
 .stl{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .meter{height:8px;border-radius:4px;background:var(--track);overflow:hidden;margin-top:6px}
 .meter i{display:block;height:100%;border-radius:4px;background:var(--accent)}
+.box li.jrow{align-items:center}
+.btn.del{flex:none;padding:0 14px;font-size:13px;color:var(--err);background:var(--err-bg);border-color:transparent}
 .exp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .exp .btn{min-height:48px;font-size:14px}
 .empty{color:var(--muted);font-size:14px;padding:14px 6px}
@@ -817,7 +819,8 @@ function renderResults(all) {
   if (admin) {
     const js = jurorStats(all);
     h += `<details class="box glass" data-key="jurors" open><summary>Эксперты: ${js.length}</summary><ul>${js.map(j =>
-      `<li><span>${esc(j.name)}<small class="sm">изменено в ${hhmm(new Date(j.last))}</small></span><b>${j.done}/${TALKS.length}</b></li>`).join("")
+      `<li class="jrow"><span>${esc(j.name)}<small class="sm">${j.done}/${TALKS.length} · изменено в ${hhmm(new Date(j.last))}</small></span>` +
+      `<button type="button" class="btn del" data-del="${esc(j.name)}" aria-label="Удалить оценки: ${esc(j.name)}">Удалить</button></li>`).join("")
       || "<li><span>Пока никто не оценивал</span></li>"}</ul></details>`;
   }
   const ranked = new Set(rows.map(r => r.t.id));
@@ -861,6 +864,37 @@ async function loadResults() {
   renderResults(all);
   $("#resUpd").textContent = note;
   $("#resUpd").hidden = !note;
+}
+
+// Удаление всех оценок эксперта (например, вошёл под неверным именем).
+// На сервере строки переносятся на лист «Удалённые».
+async function deleteJuror(name, btn) {
+  if (!isAdmin() || !name) return;
+  const self = norm(name) === jkey;
+  if (!confirm(`Удалить все оценки эксперта «${name}»?\n\nСтроки перенесутся на лист «Удалённые» в таблице. ` +
+    `Если эксперт ещё работает под этим именем, сначала попросите его нажать «Сменить эксперта», иначе его новые правки снова появятся.`)) return;
+  if (DEMO) {
+    const all = LS.get("rwp_demo_all", {});
+    delete all[norm(name)];
+    LS.set("rwp_demo_all", all);
+  } else {
+    btn.disabled = true;
+    btn.textContent = "Удаляю…";
+    try {
+      const r = await api(null, { action: "delete", code, juror, target: name });
+      if (!r.ok) {
+        btn.disabled = false; btn.textContent = "Удалить";
+        return toast(r.error === "forbidden" ? "Удалять оценки может только администратор" : "Не удалось удалить: " + (r.error || "ошибка сервера"));
+      }
+      toast(`Удалено оценок: ${r.deleted}`);
+    } catch (e) {
+      btn.disabled = false; btn.textContent = "Удалить";
+      return toast("Нет связи с сервером — оценки не удалены");
+    }
+  }
+  if (self) { data = {}; pending.clear(); errs.clear(); saveLocal(); refreshAll(); }
+  if (DEMO) toast("Оценки удалены");
+  setTimeout(loadResults, resBusy ? 1500 : 0);  // если идёт автообновление — перезагрузить после него
 }
 
 function downloadCSV(kind) {
@@ -1035,7 +1069,12 @@ $("#resMode").addEventListener("click", e => {
   if (b) setResMode(b.dataset.mode);
 });
 
-$("#resList").addEventListener("click", e => { const b = e.target.closest("[data-csv]"); if (b) downloadCSV(b.dataset.csv); });
+$("#resList").addEventListener("click", e => {
+  const b = e.target.closest("[data-csv]");
+  if (b) return downloadCSV(b.dataset.csv);
+  const d = e.target.closest("[data-del]");
+  if (d) deleteJuror(d.dataset.del, d);
+});
 $("#btnRefresh").addEventListener("click", loadResults);
 $$(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
 

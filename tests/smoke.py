@@ -74,6 +74,13 @@ with sync_playwright() as p:
     stats = pg.inner_text("#resList")
     sw_stats = pg.evaluate("document.documentElement.scrollWidth")
     pg.screenshot(path=OUT + "5_stats.png", full_page=True)
+    # admin deletes the first juror's results
+    pg.click('#resMode [data-mode="all"]')
+    pg.once("dialog", lambda d: d.accept())
+    pg.click('[data-del="Петров П. П."]')
+    pg.wait_for_timeout(300)
+    after_del = pg.inner_text(".rrow >> nth=1")
+    jurors_after = pg.inner_text('details[data-key="jurors"] summary')
     pg.emulate_media(color_scheme="dark")
     pg.click('#resMode [data-mode="all"]')
     pg.screenshot(path=OUT + "6_results_dark.png")
@@ -84,7 +91,7 @@ with sync_playwright() as p:
     b.close()
 
 print(json.dumps({"errors": errors, "s11": s11, "s12": s12, "s13": s13, "comment": comment, "prog": prog,
-                  "first": first, "second": second, "secRows": sec_rows, "scrollWidth": [sw, sw_stats],
+                  "first": first, "second": second, "afterDel": after_del, "jurorsAfter": jurors_after, "secRows": sec_rows, "scrollWidth": [sw, sw_stats],
                   "stats": stats[:400]}, ensure_ascii=False, indent=1))
 
 assert not errors, errors
@@ -93,6 +100,8 @@ assert s11.startswith(str(sum(vals1))) and "не было" in s13 and comment ==
 assert "Короткова" in first and fmt(5 * n) in first, first
 assert "Беленя" in second and fmt((sum(vals1) + 4 * n) / 2) in second, second
 assert sec_rows == 2, sec_rows
+assert "Беленя" in after_del and fmt(4 * n) in after_del and "1 эксперт" in after_del, after_del
+assert jurors_after.strip() == "Эксперты: 1", jurors_after
 assert "Распределение баллов" in stats and "Наибольшие расхождения" in stats, stats
 assert sw <= 390 and sw_stats <= 390, (sw, sw_stats)
 print("OK, скриншоты:", OUT)

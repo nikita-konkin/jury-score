@@ -25,6 +25,7 @@ const CRITERIA = [
 
 const SHEET_SCORES = "Оценки";
 const SHEET_SUMMARY = "Сводка";
+const SHEET_DELETED = "Удалённые";
 const STATUS_LABEL = { absent: "не состоялся", abstain: "воздерживается" };
 
 // Колонки листа «Оценки» (с нуля). Если в листе уже есть оценки, порядок не менять.
@@ -76,6 +77,9 @@ function handle_(p, isPost) {
         return { ok: true, role: role, rows: readRows_(null) };
       case "save":
         return isPost ? save_(p) : { ok: false, error: "post_only" };
+      case "delete":
+        if (role !== "admin") return { ok: false, error: "forbidden" };
+        return isPost ? delete_(p) : { ok: false, error: "post_only" };
       default:
         return { ok: false, error: "bad_action" };
     }
@@ -134,6 +138,55 @@ function save_(p) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// Удаление всех оценок эксперта (только администратор). Строки не стираются,
+// а переносятся на лист «Удалённые», откуда их можно вернуть вручную.
+function delete_(p) {
+  const key = norm_(p.target);
+  if (!key) return { ok: false, error: "bad_target" };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sh = scoresSheet_();
+    const last = sh.getLastRow();
+    if (last < 2) return { ok: true, deleted: 0 };
+    const vals = sh.getRange(2, 1, last - 1, WIDTH).getValues();
+    const rows = [];
+    vals.forEach((r, i) => { if (r[COL.id] && norm_(unesc_(r[COL.juror])) === key) rows.push(i + 2); });
+    if (!rows.length) return { ok: true, deleted: 0 };
+
+    const arch = archiveSheet_();
+    const moved = rows.map(n => vals[n - 2].map(v => (typeof v === "string" ? esc_(unesc_(v)) : v))
+      .concat([new Date(), esc_(clean_(p.juror))]));
+    arch.getRange(arch.getLastRow() + 1, 1, moved.length, WIDTH + 2)
+      .setNumberFormats(moved.map(() => FORMATS.concat(["dd.MM.yyyy HH:mm:ss", "@"])))
+      .setValues(moved);
+
+    // Sheets не даёт удалить все незакреплённые строки — оставим запас пустых
+    if (sh.getMaxRows() - rows.length < 2) sh.insertRowsAfter(sh.getMaxRows(), 10);
+    // удаляем снизу вверх, подряд идущие строки — одним вызовом
+    for (let i = rows.length - 1; i >= 0;) {
+      let j = i;
+      while (j > 0 && rows[j - 1] === rows[j] - 1) j--;
+      sh.deleteRows(rows[j], i - j + 1);
+      i = j - 1;
+    }
+    return { ok: true, deleted: rows.length };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function archiveSheet_() {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName(SHEET_DELETED);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_DELETED);
+    sh.getRange(1, 1, 1, WIDTH + 2).setValues([HEADER.concat(["Удалено", "Кем"])]).setFontWeight("bold");
+    sh.setFrozenRows(1);
+  }
+  return sh;
 }
 
 function readRows_(jurorKey) {
