@@ -1,0 +1,4 @@
+# исходная программа конференции, сайту не нужна
+*.pdf
+__pycache__/
+.claude/settings.local.json
