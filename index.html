@@ -482,7 +482,8 @@ class NetError extends Error {}
 async function api(params, body) {
   const url = CONFIG.SCRIPT_URL.trim();
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 20000);
+  // Apps Script иногда отвечает 30+ секунд — ждём до минуты; повтор после таймаута безопасен (upsert по ts)
+  const timer = setTimeout(() => ctl.abort(), 60000);
   try {
     let u = url;
     const opt = { signal: ctl.signal, redirect: "follow" };
@@ -1002,6 +1003,7 @@ $("#loginForm").addEventListener("submit", async e => {
   if (DEMO) return login(name, "");
   const btn = $("#btnLogin");
   btn.disabled = true; btn.textContent = "Проверяю код…"; loginError("");
+  const slow = setTimeout(() => { btn.textContent = "Сервер отвечает медленно, подождите…"; }, 6000);
   try {
     const r = await api({ action: "ping", code: cd, juror: name });
     if (!r.ok) return loginError(r.error === "bad_code" ? "Неверный код комиссии" : "Ошибка сервера: " + (r.error || "неизвестная"));
@@ -1011,7 +1013,7 @@ $("#loginForm").addEventListener("submit", async e => {
     loginError(err.message === "not_json"
       ? "Сервер ответил не так, как ожидалось. Проверьте развертывание Apps Script (доступ «Все»)."
       : "Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.", true);
-  } finally { btn.disabled = false; btn.textContent = "Войти"; }
+  } finally { clearTimeout(slow); btn.disabled = false; btn.textContent = "Войти"; }
 });
 
 $("#btnOffline").addEventListener("click", () => {
