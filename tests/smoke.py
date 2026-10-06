@@ -25,7 +25,10 @@ with sync_playwright() as p:
     pg.screenshot(path=OUT + "2_list.png")
     # open first talk, rate all criteria
     pg.click('.card[data-id="s1-1"] .sum')
-    for c, v in enumerate([5, 4, 4, 5, 3]):
+    # число критериев берём со страницы, чтобы тест не зависел от CONFIG.CRITERIA
+    n = pg.locator('.card[data-id="s1-1"] .crit').count()
+    vals1 = ([5, 4, 4, 5, 3] * 4)[:n]
+    for c, v in enumerate(vals1):
         pg.click(f'.card[data-id="s1-1"] .pt[data-c="{c}"][data-v="{v}"]')
     pg.fill('.card[data-id="s1-1"] textarea', "Хороший доклад")
     pg.wait_for_timeout(700)
@@ -51,10 +54,10 @@ with sync_playwright() as p:
     pg.click("#btnLogin")
     pg.wait_for_selector("#appView:not([hidden])")
     pg.click('.card[data-id="s1-1"] .sum')
-    for c in range(5):
+    for c in range(n):
         pg.click(f'.card[data-id="s1-1"] .pt[data-c="{c}"][data-v="4"]')
     pg.click('.card[data-id="s4-6"] .sum')
-    for c in range(5):
+    for c in range(n):
         pg.click(f'.card[data-id="s4-6"] .pt[data-c="{c}"][data-v="5"]')
     pg.wait_for_timeout(700)
     pg.click('.tab[data-tab="res"]')
@@ -85,9 +88,10 @@ print(json.dumps({"errors": errors, "s11": s11, "s12": s12, "s13": s13, "comment
                   "stats": stats[:400]}, ensure_ascii=False, indent=1))
 
 assert not errors, errors
-assert "21" in s11 and "не было" in s13 and comment == "Хороший доклад", (s11, s13, comment)
-assert "Короткова" in first and "25" in first, first
-assert "Беленя" in second and "20,5" in second, second
+fmt = lambda x: f"{x:g}".replace(".", ",")
+assert s11.startswith(str(sum(vals1))) and "не было" in s13 and comment == "Хороший доклад", (s11, s13, comment)
+assert "Короткова" in first and fmt(5 * n) in first, first
+assert "Беленя" in second and fmt((sum(vals1) + 4 * n) / 2) in second, second
 assert sec_rows == 2, sec_rows
 assert "Распределение баллов" in stats and "Наибольшие расхождения" in stats, stats
 assert sw <= 390 and sw_stats <= 390, (sw, sw_stats)
