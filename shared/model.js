@@ -125,7 +125,8 @@
 
   /** Ключ зала: «ауд. 431», «аудитория 431» и «431» — один зал. */
   function roomKey(s) {
-    return clean(s).toLowerCase().replace(/ё/g, "е").replace(/^(аудитория|ауд\.?)\s*/, "").replace(/\s+/g, "");
+    // «ПГТУ, 1й корпус, ауд.403» = «ПГТУ, 1й корпус ауд. 403»: пробелы и знаки препинания не различают залы
+    return clean(s).toLowerCase().replace(/ё/g, "е").replace(/^(аудитория|ауд\.?)\s*/, "").replace(/[^a-zа-я0-9]+/g, "");
   }
 
   const titleKey = s => clean(s).toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]+/g, " ").trim();
@@ -535,7 +536,8 @@
         R.warn("DAY_OUT_OF_RANGE", "days[" + di + "].date", `День ${d.date} вне дат мероприятия ${ev.date_from}…${ev.date_to}`);
       }
       d.sessions.forEach((s, si) => {
-        if (!s.room && s.items.some(it => !it.room && !it.all_day)) {
+        // обеду и перерыву зал не обязателен
+        if (!s.room && s.items.some(it => !it.room && !it.all_day && it.type !== "lunch" && it.type !== "break")) {
           R.warn("NO_ROOM", "days[" + di + "].sessions[" + si + "].room", `У заседания «${s.title || "без названия"}» не указан зал`);
         }
       });
@@ -678,7 +680,11 @@
   function slugify(s, maxLen) {
     const out = clean(s).toLowerCase().split("").map(ch => (has(TRANSLIT, ch) ? TRANSLIT[ch] : ch)).join("")
       .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    return out.slice(0, maxLen || 48).replace(/-+$/, "");
+    const max = maxLen || 48;
+    if (out.length <= max) return out;
+    // обрезка по границе слова, если она есть
+    const cut = out.slice(0, max + 1), dash = cut.lastIndexOf("-");
+    return (dash > 0 ? cut.slice(0, dash) : out.slice(0, max)).replace(/-+$/, "");
   }
 
   /* ---------------- документ ↔ строки БД ---------------- */

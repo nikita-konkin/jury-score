@@ -14,7 +14,7 @@ const validate = ajv.compile(read("public/schema/program.v1.json"));
 const errs = () => (validate.errors || []).map(e => e.instancePath + " " + e.message).join("\n");
 
 test("фикстуры соответствуют JSON Schema", () => {
-  ["fixtures/rwp-2026.program.json", "fixtures/rwp-2026.broken.json"].forEach(f => {
+  ["fixtures/rwp-2026.program.json", "fixtures/rwp-2026.broken.json", "fixtures/rrv-2023.program.json"].forEach(f => {
     // в broken время «14.30» — как в PDF; схема его не пропускает, нормализация чинит
     const doc = read(f);
     const ok = validate(doc);
@@ -24,7 +24,7 @@ test("фикстуры соответствуют JSON Schema", () => {
 });
 
 test("результат normalize соответствует JSON Schema", () => {
-  ["fixtures/rwp-2026.program.json", "fixtures/rwp-2026.broken.json"].forEach(f => {
+  ["fixtures/rwp-2026.program.json", "fixtures/rwp-2026.broken.json", "fixtures/rrv-2023.program.json"].forEach(f => {
     const { doc } = M.normalize(read(f));
     assert.ok(validate(doc), f + "\n" + errs());
   });

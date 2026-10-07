@@ -194,3 +194,38 @@ test("грубые ошибки входа не роняют нормализа�
   assert.ok(codes(r.errors).includes("BAD_ITEM"));
   assert.ok(codes(r.errors).includes("MISSING_TITLE"));
 });
+
+test("РРВ-2023: параллельные секции в пяти залах, без ошибок; предупреждения — опечатки исходника", () => {
+  const { doc, report } = M.normalize(fixture("rrv-2023.program.json"));
+  assert.equal(report.ok, true, JSON.stringify(report.errors.slice(0, 3)));
+  assert.deepEqual(report.stats, { days: 5, sessions: 44, items: 164, talks: 138, competitive: 138, sections: 9, rooms: 13 });
+  const warn = {};
+  report.warnings.forEach(w => { warn[w.code] = (warn[w.code] || 0) + 1; });
+  // «Павлова» без инициалов, «А. Е.» вместо «Н. Г.» Котонаевой, «В.» вместо «В. В.» Ахиярова; у ужина нет места
+  assert.deepEqual(warn, { SPEAKER_NOT_IN_AUTHORS: 3, NO_ROOM: 1 });
+  // в 15:00 16 мая одновременно пять заседаний в разных залах
+  const at15 = doc.days[2 - 1].sessions.filter(s => s.start === "15:00");
+  assert.deepEqual(at15.map(s => s.room), ["ауд. 403", "ауд. 406", "ауд. 238 (конференц-зал)", "ауд. 351", "ауд. 354"]);
+  // в общем зале секций 3, 4 и 7 у каждого доклада своя секция (по списку заявок)
+  assert.deepEqual(doc.days[1].sessions.find(s => s.title === "Секции 3, 4, 7").items.map(it => it.section), [7, 7, 7, 4]);
+  // идемпотентность на большой программе
+  assert.deepEqual(M.normalize(doc).doc, doc);
+});
+
+test("зал: пробелы и знаки препинания не различают залы — наложение находится", () => {
+  const { report } = M.normalize(mini([
+    { title: "А", room: "ПГТУ, 1й корпус, ауд.403", start: "10:00", items: [talk("Первый", "А. А. Петров")] },
+    { title: "Б", room: "ПГТУ, 1й корпус ауд. 403", start: "10:05", items: [talk("Второй", "Б. Б. Сидоров")] },
+  ]));
+  assert.equal(M.roomKey("ПГТУ, 1й корпус, ауд.403"), M.roomKey("ПГТУ, 1й корпус ауд. 403"));
+  assert.ok(report.errors.some(e => e.code === "ROOM_OVERLAP") || report.warnings.some(e => e.code === "ROOM_OVERLAP"));
+});
+
+test("обеду и перерыву без зала предупреждение NO_ROOM не нужно", () => {
+  const { report } = M.normalize(mini([
+    { title: "Секция", room: "ауд. 1", start: "10:00", items: [talk("Доклад", "А. А. Петров")] },
+    { title: "Обед", start: "12:00", items: [{ type: "lunch", title: "Обед" }] },
+    { title: "Экскурсия", start: "14:00", items: [{ type: "activity", title: "Экскурсия", duration: 60 }] },
+  ]));
+  assert.deepEqual(report.warnings.filter(w => w.code === "NO_ROOM").map(w => w.path), ["days[0].sessions[2].room"]);
+});

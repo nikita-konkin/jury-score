@@ -205,3 +205,12 @@ t("импорт, чтение, права, новая версия, отказ �
   const listed = await api("GET", "/api/collections/events/records");
   assert.deepEqual(listed.json.items.map(e => e.slug), ["rwp-2026"]);
 });
+
+t("РРВ-2023: 164 элемента в параллельных залах сохраняются и читаются без потерь", async () => {
+  const program = fixture("rrv-2023.program.json");
+  const imp = await api("POST", "/api/v1/admin/events", { program }, suToken);
+  assert.equal(imp.status, 201, imp.text);
+  assert.equal(imp.json.event.slug, "xxviii-vserossiyskaya-otkrytaya-2023");
+  const got = await api("GET", `/api/v1/events/${imp.json.event.id}/program`, undefined, suToken);
+  assert.deepEqual(got.json.program, M.normalize(program).doc);
+});

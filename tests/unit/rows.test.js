@@ -80,4 +80,6 @@ test("slugify: транслитерация, обрезка, пустой рез
   assert.equal(M.slugify("  Ёлка  и   щука "), "elka-i-schuka");
   assert.equal(M.slugify("«»—"), "");
   assert.equal(M.slugify("а".repeat(10) + " бб", 11), "aaaaaaaaaa");
+  assert.equal(M.slugify("Всероссийская научная конференция", 30), "vserossiyskaya-nauchnaya");
+  assert.equal(M.slugify("Распространениерадиоволн", 10), "rasprostra");
 });
