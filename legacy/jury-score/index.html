@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#e8ecf6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#060814" media="(prefers-color-scheme: dark)">
+<meta name="format-detection" content="telephone=no">
+<meta name="robots" content="noindex">
+<title>Оценка докладов · RWP-2026</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235b7cff'/%3E%3Cstop offset='1' stop-color='%23a45cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='48' height='48' rx='13' fill='url(%23g)'/%3E%3Ccircle cx='24' cy='33' r='3.4' fill='%23fff'/%3E%3Cpath d='M16.5 25.5a10.6 10.6 0 0 1 15 0M11 20a18.4 18.4 0 0 1 26 0' fill='none' stroke='%23fff' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  color-scheme:light dark;
+  --bg:#e8ecf6;--fg:#0f1426;--muted:rgba(15,20,38,.62);--faint:rgba(15,20,38,.36);
+  --glass:rgba(255,255,255,.5);--glass-solid:rgba(250,251,255,.95);--bar:rgba(246,248,255,.72);
+  --card:rgba(255,255,255,.56);--card-open:rgba(255,255,255,.74);
+  --stroke:rgba(255,255,255,.72);--line:rgba(15,20,38,.09);
+  --chip:rgba(255,255,255,.62);--field:rgba(255,255,255,.75);--lens:rgba(255,255,255,.94);
+  --hi:rgba(255,255,255,.95);--sheen:rgba(255,255,255,.5);--rim1:#fff;--rim2:rgba(255,255,255,.55);
+  --shadow:0 14px 34px -16px rgba(36,48,110,.38),0 2px 8px -2px rgba(36,48,110,.08);
+  --accent:#4c66ff;--accent2:#9a55ff;--glow:rgba(92,90,255,.55);
+  --ok:#0f9152;--warn:#ad6600;--warn-bg:rgba(255,176,32,.18);--err:#d0353b;--err-bg:rgba(230,60,70,.12);
+  --track:rgba(15,20,38,.08);
+  --b1:#ff9bd0;--b2:#7cbcff;--b3:#86ecd0;--b4:#c4a2ff;--b5:#ffd59e;--bo:.9;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#060814;--fg:#eef1ff;--muted:rgba(238,241,255,.64);--faint:rgba(238,241,255,.36);
+    --glass:rgba(24,28,50,.46);--glass-solid:rgba(20,24,42,.96);--bar:rgba(16,19,38,.78);
+    --card:rgba(255,255,255,.06);--card-open:rgba(255,255,255,.09);
+    --stroke:rgba(255,255,255,.13);--line:rgba(255,255,255,.1);
+    --chip:rgba(255,255,255,.08);--field:rgba(0,0,0,.24);--lens:rgba(255,255,255,.15);
+    --hi:rgba(255,255,255,.2);--sheen:rgba(255,255,255,.07);--rim1:rgba(255,255,255,.5);--rim2:rgba(255,255,255,.12);
+    --shadow:0 18px 38px -18px rgba(0,0,0,.8);
+    --accent:#7088ff;--accent2:#b07cff;--glow:rgba(120,110,255,.5);
+    --ok:#3fd68c;--warn:#ffb547;--warn-bg:rgba(255,181,71,.14);--err:#ff6b70;--err-bg:rgba(255,107,112,.14);
+    --track:rgba(255,255,255,.1);
+    --b1:#8a2c86;--b2:#1d4bb3;--b3:#0b6e62;--b4:#4b2db5;--b5:#6a3418;--bo:.6;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;min-height:100vh;min-height:100dvh;background:var(--bg);color:var(--fg);font:15px/1.4 var(--font);
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,p{margin:0}
+
+/* ---------- фон: мягкие цветные пятна под стеклом ---------- */
+.bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.bg i{position:absolute;width:80vmax;height:80vmax;border-radius:50%;opacity:var(--bo);
+  background:radial-gradient(closest-side,var(--c),transparent)}
+.bg i:nth-child(1){--c:var(--b1);left:-38vmax;top:-34vmax}
+.bg i:nth-child(2){--c:var(--b2);right:-40vmax;top:-8vmax}
+.bg i:nth-child(3){--c:var(--b3);left:-30vmax;top:38vh}
+.bg i:nth-child(4){--c:var(--b4);right:-34vmax;bottom:-36vmax}
+.bg i:nth-child(5){--c:var(--b5);left:10vw;bottom:-50vmax;opacity:calc(var(--bo)*.7)}
+
+/* ---------- liquid glass ---------- */
+.glass,.card{position:relative;isolation:isolate}
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+  border:1px solid var(--stroke);box-shadow:inset 0 1px 0 var(--hi),var(--shadow)}
+.glass::before,.card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:linear-gradient(180deg,var(--sheen),transparent 46%)}
+@supports ((mask-composite:exclude) or (-webkit-mask-composite:xor)){
+  .glass::after,.card::after{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;
+    background:linear-gradient(135deg,var(--rim1),transparent 32%,transparent 66%,var(--rim2));
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass{background:var(--glass-solid)}}
+@media (prefers-reduced-transparency:reduce){.glass{background:var(--glass-solid)}}
+
+/* ---------- вход ---------- */
+.login{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+.panel{width:100%;max-width:400px;border-radius:32px;padding:28px 22px 22px}
+.logo{width:76px;height:76px;border-radius:24px;margin:0 auto 16px;display:grid;place-items:center}
+.logo svg{width:44px;height:44px}
+.login h1{font-size:23px;line-height:1.2;letter-spacing:-.02em;text-align:center;font-weight:800;text-wrap:balance}
+.sub{color:var(--muted);text-align:center;margin:6px 0 22px;font-size:14px}
+.field{display:block;margin-bottom:12px}
+.field span{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:0 0 6px 4px}
+.field input{width:100%;height:52px;border-radius:16px;border:1px solid var(--line);background:var(--field);padding:0 14px;font-size:17px;outline:none;
+  transition:border-color .2s,box-shadow .2s}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 20%,transparent)}
+.err{color:var(--err);font-size:14px;min-height:20px;margin:2px 4px 8px}
+.btn{min-height:44px;border-radius:16px;border:1px solid var(--line);background:var(--chip);padding:0 16px;font-weight:600;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:transform .15s,opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn.primary{width:100%;height:54px;border:0;color:#fff;font-size:17px;font-weight:700;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 12px 26px -12px var(--glow),inset 0 1px 0 rgba(255,255,255,.35)}
+.btn:disabled{opacity:.6;pointer-events:none}
+.btn.wide{width:100%;margin-top:10px}
+.pill{display:block;margin:16px auto 0;padding:8px 12px;border-radius:14px;font-size:13px;text-align:center}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.login .note{color:var(--muted);font-size:13px;text-align:center;margin-top:16px;max-width:360px}
+
+/* ---------- приложение ---------- */
+.wrap{max-width:664px;margin:0 auto;padding:0 12px calc(112px + env(safe-area-inset-bottom))}
+.top,.tabbar{background:var(--bar)}
+.top{position:sticky;top:max(8px,env(safe-area-inset-top));z-index:20;margin-top:8px;border-radius:26px;padding:10px 10px 12px 16px}
+.row1{display:flex;align-items:center;gap:10px}
+.brand{flex:1;min-width:0}
+.brand b{display:block;font-size:18px;font-weight:800;letter-spacing:-.02em;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sync{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sync.ok{color:var(--ok)}.sync.warn{color:var(--warn)}.sync.err{color:var(--err);font-weight:600}
+.who{display:flex;align-items:center;gap:8px;min-height:44px;max-width:60%;padding:4px 14px 4px 4px;border-radius:999px;
+  border:1px solid var(--line);background:var(--chip)}
+.ava{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.who .nm{min-width:0;text-align:left;line-height:1.15}
+.who .nm b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .nm small{display:block;font-size:11px;color:var(--muted)}
+.prog{display:flex;align-items:center;gap:10px;margin-top:10px;padding-right:6px;font-size:12px;color:var(--muted)}
+.bar{flex:1;height:6px;border-radius:99px;background:var(--track);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .45s cubic-bezier(.2,.8,.2,1)}
+#progTxt{font-variant-numeric:tabular-nums;white-space:nowrap}
+.banner{display:block;width:100%;margin-top:10px;min-height:44px;border-radius:14px;border:0;padding:8px 12px;text-align:left;
+  background:var(--err-bg);color:var(--err);font-weight:600;font-size:13px}
+
+.filter{display:flex;align-items:center;gap:10px;margin:14px 2px 0}
+.filter>span{font-size:13px;font-weight:600;color:var(--muted)}
+.seg{flex:1;display:flex;padding:4px;border-radius:999px;min-width:0}
+.seg button{flex:1;min-width:0;min-height:44px;border:0;border-radius:999px;background:transparent;font-weight:600;font-size:14px;color:var(--muted);
+  transition:background .25s,color .25s,box-shadow .25s}
+.seg button.on{background:var(--lens);color:var(--fg);box-shadow:0 3px 10px -4px rgba(0,0,0,.25),inset 0 1px 0 var(--hi)}
+.hint{font-size:13px;color:var(--muted);margin:12px 6px 0}
+
+.sech{margin:22px 6px 10px;font-weight:400}
+.secno{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.secno em{font-style:normal;letter-spacing:0;text-transform:none;font-weight:600;color:var(--muted);white-space:nowrap}
+.secname{display:block;font-size:15px;font-weight:650;line-height:1.3;margin-top:3px}
+.cards{display:grid;gap:10px}
+
+/* ---------- карточка доклада ---------- */
+.card{border-radius:22px;background:var(--card);border:1px solid var(--stroke);box-shadow:inset 0 1px 0 var(--hi),var(--shadow);
+  transition:background .25s,box-shadow .25s;scroll-margin-top:140px}
+.card.open{background:var(--card-open)}
+.sum{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;width:100%;min-height:64px;
+  padding:12px;border:0;background:none;text-align:left;border-radius:22px}
+.when{font-size:12px;font-weight:700;padding:4px 8px;border-radius:10px;background:var(--chip);border:1px solid var(--line);
+  font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:1px}
+.main{min-width:0;display:flex;flex-direction:column}
+.ttl{font-weight:600;line-height:1.3;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card.open .ttl{-webkit-line-clamp:unset;display:block}
+.who2{font-size:13px;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}
+.side{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.score{min-width:54px;height:30px;padding:0 10px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
+  font-weight:700;white-space:nowrap;background:var(--chip);border:1px solid var(--line);color:var(--faint);font-variant-numeric:tabular-nums}
+.score small{font-size:11px;font-weight:600;opacity:.75}
+.card.done .score{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:0 6px 16px -6px var(--glow),inset 0 1px 0 rgba(255,255,255,.35)}
+.card.part .score{color:var(--warn);background:var(--warn-bg);border-color:transparent}
+.card.flagged .score{color:var(--muted);font-size:12px}
+.sv{font-size:11px;white-space:nowrap;color:var(--muted)}
+.sv.saved{color:var(--ok)}.sv.error{color:var(--err);font-weight:600}
+
+.body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.2,.8,.2,1)}
+.body>.inner{min-height:0;overflow:hidden;visibility:hidden;transition:visibility 0s linear .32s}
+.card.open .body{grid-template-rows:1fr}
+.card.open .body>.inner{visibility:visible;transition-delay:0s}
+.card.instant .body,.card.instant .body>.inner{transition:none}
+.pad{padding:0 12px 14px}
+.meta{font-size:13px;color:var(--muted);overflow-wrap:anywhere;padding:10px 12px;border-radius:14px;background:var(--chip)}
+.meta b{color:var(--fg);font-weight:600}
+.crit{margin-top:14px}
+.cl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px;font-weight:600;margin:0 2px 7px}
+.cl b{color:var(--accent);font-variant-numeric:tabular-nums}
+.pts{display:grid;grid-template-columns:repeat(auto-fit,minmax(44px,1fr));gap:8px}
+.pt{height:48px;border-radius:15px;border:1px solid var(--line);background:var(--chip);font-weight:700;font-size:18px;
+  font-variant-numeric:tabular-nums;transition:transform .15s,background .2s,box-shadow .2s,color .2s}
+.pt:active{transform:scale(.92)}
+.pt[aria-pressed="true"]{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:0 8px 18px -8px var(--glow),inset 0 1px 0 rgba(255,255,255,.4)}
+.card.flagged .pts{opacity:.4}
+.flags{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.flag{min-height:44px;border-radius:14px;border:1px solid var(--line);background:var(--chip);font-size:13px;font-weight:600;color:var(--muted);padding:6px 8px}
+.flag[aria-pressed="true"]{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+textarea{display:block;width:100%;min-height:68px;margin-top:10px;border-radius:14px;border:1px solid var(--line);background:var(--field);
+  padding:10px 12px;font-size:16px;resize:vertical;outline:none}
+textarea:focus{border-color:var(--accent)}
+.foot{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+
+/* ---------- итоги ---------- */
+.resbar{display:flex;gap:8px;align-items:center;margin-top:14px}
+.iconbtn{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;padding:0;color:var(--accent)}
+.iconbtn svg{width:22px;height:22px}
+.iconbtn.spin svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.upd{font-size:12px;color:var(--muted);margin:10px 6px 0}
+.rnote{font-size:13px;color:var(--muted);margin:6px 6px 12px}
+.rrow{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:start;padding:12px;border-radius:20px;
+  background:var(--card);border:1px solid var(--stroke);box-shadow:inset 0 1px 0 var(--hi),var(--shadow)}
+.place{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:var(--chip);border:1px solid var(--line)}
+.p1 .place{background:linear-gradient(135deg,#ffe07a,#f2a51f);color:#4a3000;border:0}
+.p2 .place{background:linear-gradient(135deg,#eef2f7,#a9b4c4);color:#28303c;border:0}
+.p3 .place{background:linear-gradient(135deg,#f6c39c,#c2794a);color:#3d1d08;border:0}
+.rttl{font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.rsub{font-size:12px;color:var(--muted);margin-top:3px}
+.ravg{text-align:right;white-space:nowrap}
+.ravg b{display:block;font-size:21px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ravg span{font-size:11px;color:var(--muted)}
+.rdet{grid-column:1/-1;font-size:13px}
+details>summary{list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center;gap:6px;font-weight:600;color:var(--accent)}
+details>summary::-webkit-details-marker{display:none}
+details>summary::after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin:-3px 0 0 4px;transition:transform .2s}
+details[open]>summary::after{transform:rotate(225deg);margin-top:3px}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;margin:2px 0 8px}
+.kv span{color:var(--muted);overflow-wrap:anywhere}
+.kv b{font-variant-numeric:tabular-nums;text-align:right}
+.box{border-radius:20px;padding:4px 14px 8px;margin-top:12px}
+.box ul{list-style:none;margin:0;padding:0}
+.box li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.box li span{min-width:0;overflow-wrap:anywhere}
+.box li b{white-space:nowrap;font-variant-numeric:tabular-nums}
+.box li i{font-style:normal;color:var(--warn);white-space:nowrap}
+.box .sm{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.box h3{margin:12px 0 4px;font-size:14px;font-weight:700}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{border-radius:20px;padding:12px 14px}
+.tile b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
+.tile b small{font-size:14px;font-weight:600;color:var(--muted)}
+.tile span{font-size:12px;color:var(--muted)}
+.box li.st{display:block}
+.stl{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.meter{height:8px;border-radius:4px;background:var(--track);overflow:hidden;margin-top:6px}
+.meter i{display:block;height:100%;border-radius:4px;background:var(--accent)}
+.box li.jrow{align-items:center}
+.btn.del{flex:none;padding:0 14px;font-size:13px;color:var(--err);background:var(--err-bg);border-color:transparent}
+.exp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.exp .btn{min-height:48px;font-size:14px}
+.empty{color:var(--muted);font-size:14px;padding:14px 6px}
+
+/* ---------- нижняя панель ---------- */
+.tabbar{position:fixed;z-index:30;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  width:min(300px,calc(100% - 32px));display:grid;grid-template-columns:1fr 1fr;padding:5px;border-radius:999px}
+.lens{position:absolute;z-index:0;top:5px;bottom:5px;left:5px;width:calc(50% - 5px);border-radius:999px;background:var(--lens);
+  box-shadow:0 4px 14px -6px rgba(0,0,0,.3),inset 0 1px 0 var(--hi);transition:transform .5s cubic-bezier(.34,1.5,.64,1)}
+.tabbar[data-i="1"] .lens{transform:translateX(100%)}
+.tab{position:relative;z-index:1;min-height:54px;border:0;border-radius:999px;background:transparent;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted);transition:color .25s}
+.tab svg{width:22px;height:22px}
+.tab.active{color:var(--accent)}
+.toast{position:fixed;z-index:40;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translate(-50%,16px);opacity:0;
+  width:max-content;max-width:calc(100% - 32px);padding:12px 16px;border-radius:18px;font-size:14px;pointer-events:none;
+  transition:opacity .25s,transform .35s cubic-bezier(.34,1.5,.64,1)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<noscript><p style="padding:24px;text-align:center">Для работы страницы нужен JavaScript.</p></noscript>
+
+<main id="loginView" class="login" hidden>
+  <form id="loginForm" class="panel glass" novalidate autocomplete="off">
+    <div class="logo glass" aria-hidden="true">
+      <svg viewBox="0 0 48 48"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b7cff"/><stop offset="1" stop-color="#a45cff"/></linearGradient></defs>
+        <circle cx="24" cy="30" r="3.6" fill="url(#lg)"/>
+        <path d="M16.5 22.5a10.6 10.6 0 0 1 15 0M11 17a18.4 18.4 0 0 1 26 0M5.5 11.5a26.2 26.2 0 0 1 37 0" fill="none" stroke="url(#lg)" stroke-width="3.2" stroke-linecap="round"/></svg>
+    </div>
+    <h1 id="ttl"></h1>
+    <p class="sub" id="subttl"></p>
+    <label class="field"><span>Фамилия и инициалы</span>
+      <input id="inName" type="text" autocomplete="name" autocapitalize="words" spellcheck="false" placeholder="Иванов И. И." maxlength="80"></label>
+    <label class="field" id="codeField"><span>Код комиссии</span>
+      <input id="inCode" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Выдаёт организатор" maxlength="60"></label>
+    <p id="loginErr" class="err" role="alert"></p>
+    <button id="btnLogin" class="btn primary" type="submit">Войти</button>
+    <button id="btnOffline" class="btn wide" type="button" hidden>Войти без проверки кода</button>
+    <p id="demoNote" class="pill warn" hidden>Демо-режим: оценки хранятся только на этом устройстве</p>
+  </form>
+  <p class="note">Оценки сохраняются автоматически. Администратор входит со своим кодом и видит итоги всех экспертов.</p>
+</main>
+
+<div id="appView" class="wrap" hidden>
+  <header class="top glass">
+    <div class="row1">
+      <div class="brand"><b>RWP-2026</b><span id="syncTxt" class="sync"></span></div>
+      <button id="btnWho" class="who" type="button" title="Сменить эксперта">
+        <span class="ava" id="ava"></span><span class="nm"><b id="whoName"></b><small id="whoRole"></small></span>
+      </button>
+    </div>
+    <div class="prog"><div class="bar"><i id="progBar"></i></div><span id="progTxt"></span></div>
+    <button id="banner" class="banner" type="button" hidden>⚠ Неверный код комиссии — оценки не отправляются. Нажмите, чтобы ввести код заново.</button>
+  </header>
+
+  <section id="rateView">
+    <div class="filter"><span>Секция</span>
+      <div class="seg glass" id="secFilter"><button type="button" data-sec="all">Все</button><button type="button" data-sec="1">1</button><button type="button" data-sec="2">2</button><button type="button" data-sec="3">3</button><button type="button" data-sec="4">4</button></div>
+    </div>
+    <p class="hint" id="hint"></p>
+    <div id="list"></div>
+  </section>
+
+  <section id="resView" hidden>
+    <div class="resbar">
+      <div class="seg glass" id="resMode"><button type="button" data-mode="all" class="on">Рейтинг</button><button type="button" data-mode="sec">Секции</button><button type="button" data-mode="stats">Статистика</button></div>
+      <button id="btnRefresh" class="iconbtn glass" type="button" aria-label="Обновить">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>
+      </button>
+    </div>
+    <p id="resUpd" class="upd"></p>
+    <div id="resList"></div>
+  </section>
+
+  <nav class="tabbar glass" data-i="0" role="tablist">
+    <span class="lens" aria-hidden="true"></span>
+    <button class="tab active" type="button" role="tab" data-tab="rate" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M3.5 6l1.4 1.4L7.5 4.8M3.5 12l1.4 1.4 2.6-2.6M3.5 18l1.4 1.4 2.6-2.6"/></svg>
+      <span>Оценки</span></button>
+    <button class="tab" type="button" role="tab" data-tab="res" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M16 5.5h3V7a3 3 0 0 1-3 3M8 5.5H5V7a3 3 0 0 0 3 3M12 13v3.5M8.5 20h7M9.5 16.5h5"/></svg>
+      <span>Итоги</span></button>
+  </nav>
+</div>
+<div id="toast" class="toast glass" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* ======================= НАСТРОЙКИ ======================= */
+const CONFIG = {
+  // URL веб-приложения Apps Script (…/exec). Пустая строка — демо-режим: всё хранится только на этом устройстве.
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbw43guHU-DdaSRAge7VKq41lsNo86qfkUmB3bepGn5D-wzHY018G7VNrSfYNBOacNunoQ/exec",
+  SCALE_MAX: 5,
+  // Должно совпадать с CRITERIA в Code.gs: количество и порядок
+  CRITERIA: [
+    "Актуальность темы",
+    "Научная новизна",
+    "Обоснованность и достоверность результатов",
+    "Практическая значимость",
+    "Качество доклада и презентации",
+    "Ответы на вопросы",
+  ],
+  TITLE: "Конкурс докладов RWP-2026",
+  SUBTITLE: "7 октября 2026 · ПГТУ, Йошкар-Ола",
+};
+
+const SECTIONS = {
+  1: { name: "Дистанционное зондирование атмосферы, ионосферы, космического пространства и земных покровов", room: "ауд. 431" },
+  2: { name: "Распространение радиоволн различных диапазонов и математическое моделирование", room: "ауд. 431" },
+  3: { name: "Физические проблемы радиолокации, радионавигации и радиосвязи", room: "ауд. 333б" },
+  4: { name: "Интеллектуальный анализ и обработка экспериментальных данных в задачах распространения радиоволн и их приложений", room: "ауд. 333б" },
+};
+
+const KAI = "Казанский национальный исследовательский технический университет им. А. Н. Туполева, г. Казань";
+const ISZF = "Институт солнечно-земной физики СО РАН, г. Иркутск";
+const NNGU = "Нижегородский государственный университет им. Н. И. Лобачевского, г. Нижний Новгород";
+const PGTU = "Поволжский государственный технологический университет, г. Йошкар-Ола";
+
+// ID вида s<секция>-<номер>: префикс s обязателен, иначе Google Sheets превратит «1-1» в дату.
+// В секции 4 время в программе сбито, поэтому time пустое и показывается порядковый номер.
+const TALKS = [
+  { id: "s1-1", sec: 1, time: "09:00–09:15", speaker: "Е. С. Беленя", fmt: "онлайн", org: "Военно-космическая академия им. А. Ф. Можайского, г. Санкт-Петербург",
+    authors: "Д. М. Караваев, Е. С. Беленя, О. А. Королева",
+    title: "Исследования основных компонент тропосферной задержки радионавигационных сигналов над территорией России" },
+  { id: "s1-2", sec: 1, time: "09:15–09:30", speaker: "В. С. Моргачева", fmt: "онлайн", org: "Воронежский государственный университет, г. Воронеж",
+    authors: "В. С. Моргачева, К. В. Смусева, Г. К. Усков",
+    title: "Определение скорости роста растительного покрова по динамике S-параметров в лабораторных условиях" },
+  { id: "s1-3", sec: 1, time: "09:30–09:45", speaker: "А. О. Рябов", fmt: "онлайн", org: NNGU, authors: "А. О. Рябов",
+    title: "Исследование искусственных электромагнитных возмущений в верхней ионосфере" },
+  { id: "s1-4", sec: 1, time: "09:45–10:00", speaker: "А. О. Рябов", fmt: "онлайн", org: NNGU, authors: "А. О. Рябов",
+    title: "Сравнительный анализ интенсивности высыпаний высокоэнергичных электронов в северном и южном полушариях" },
+  { id: "s1-5", sec: 1, time: "10:00–10:15", speaker: "С. А. Серебренникова", fmt: "очно", org: ISZF,
+    authors: "С. А. Серебренникова, В. А. Иванова, А. В. Подлесный, М. В. Цедрик, А. И. Поддельский, А. Ю. Белинская",
+    title: "Исследование межслоевого распространения декаметровых сигналов в феврале 2025 года" },
+  { id: "s1-6", sec: 1, time: "10:15–10:30", speaker: "М. А. Титова", fmt: "очно", org: "Институт земного магнетизма, ионосферы и распространения радиоволн им. Н. В. Пушкова РАН, г. Троицк",
+    authors: "М. А. Титова, В. И. Захаров, С. А. Пулинец",
+    title: "Ионосферные и инструментальные факторы сбоев сигналов ГНСС по данным мониторинга полной электронной концентрации при геомагнитных возмущениях" },
+
+  { id: "s2-1", sec: 2, time: "11:30–11:45", speaker: "Н. Д. Анютин", fmt: "очно", org: "Российский новый университет, г. Москва", authors: "Н. Д. Анютин",
+    title: "Многорезонансная локализация фонон-поляритонов в массиве квадратных кластеров цилиндров из 6H-SiC" },
+  { id: "s2-2", sec: 2, time: "11:45–12:00", speaker: "А. Ф. Гильфанова", fmt: "онлайн", org: KAI, authors: "А. Ф. Гильфанова, Д. А. Веденькин",
+    title: "Формирование разностных распределений с использованием эффекта мультифокусировки" },
+  { id: "s2-3", sec: 2, time: "12:00–12:15", speaker: "Г. А. Давыденко", fmt: "очно", org: KAI, authors: "Г. А. Давыденко, Д. А. Веденькин",
+    title: "Разработка конструкции подвеса антенны на летательных аппаратах для задач сельскохозяйственного мониторинга" },
+  { id: "s2-4", sec: 2, time: "12:15–12:30", speaker: "Д. Ю. Звонкова", fmt: "онлайн", org: KAI, authors: "Д. Ю. Звонкова, Д. А. Веденькин",
+    title: "Проектирование широкополосного элементарного излучателя для сфокусированной антенной решетки" },
+  { id: "s2-5", sec: 2, time: "12:30–12:45", speaker: "В. В. Ковалёва", fmt: "очно", org: ISZF, authors: "В. В. Ковалёва, В. П. Лебедев",
+    title: "Дисперсионные уравнения и энергетика внутренних гравитационных волн" },
+  { id: "s2-6", sec: 2, time: "12:45–13:00", speaker: "А. В. Летов", fmt: "очно", org: KAI, authors: "А. В. Летов, А. А. Степанов",
+    title: "Анализ интерференционных характеристик антенны YAGI CROSS и оценка ионосферной групповой задержки сигнала в лабораторном комплексе" },
+  { id: "s2-7", sec: 2, time: "13:00–13:15", speaker: "Д. А. Смирнов", fmt: "онлайн", org: "НПО «Радиолокация в геофизике и радиофизике», г. Троицк",
+    authors: "А. А. Аверин, В. В. Варенков, Т. В. Сахтерова, Д. А. Смирнов",
+    title: "Обработка результатов профилирования георадара с управляемой диаграммой" },
+
+  { id: "s3-1", sec: 3, time: "14:00–14:15", speaker: "П. Е. Денисенко", fmt: "очно", org: KAI, authors: "Е. П. Денисенко, П. Е. Денисенко, О. Г. Морозов",
+    title: "Скалярные широкодиапазонные радиофотонные системы определения угла прихода СВЧ-сигналов на основе тандемной амплитудно-фазовой модуляции" },
+  { id: "s3-2", sec: 3, time: "14:15–14:30", speaker: "А. А. Иванов", fmt: "очно", org: KAI, authors: "Л. Д. Ибрагимов, А. А. Иванов, И. И. Нуреев, Г. А. Морозов",
+    title: "Радиофотонные модули мгновенного измерения частоты внесистемных СВЧ-сигналов на основе двойных широкополосных пакетов дискретных частот" },
+  { id: "s3-3", sec: 3, time: "14:30–14:45", speaker: "М. Э. Федоров", fmt: "очно", org: "Иркутский государственный университет путей сообщения, г. Иркутск", authors: "М. Э. Федоров",
+    title: "Метод получения немоделируемых ошибок псевдодальности" },
+
+  { id: "s4-1", sec: 4, time: "", speaker: "М. А. Матюков", fmt: "онлайн", org: "Владимирский государственный университет им. А. Г. и Н. Г. Столетовых, г. Владимир", authors: "М. А. Матюков",
+    title: "Оценка горизонта прогнозирования влажности и температуры воздуха по результатам многочастотных СВЧ радиометрических измерений" },
+  { id: "s4-2", sec: 4, time: "", speaker: "Д. С. Резяпов", fmt: "очно", org: KAI, authors: "Д. С. Резяпов",
+    title: "Исследование свойств динамических псевдослучайных последовательностей в задачах повышения потенциала радиосвязи" },
+  { id: "s4-3", sec: 4, time: "", speaker: "А. Д. Равилов", fmt: "онлайн", org: "Пермский национальный исследовательский политехнический университет, г. Пермь", authors: "А. Д. Равилов, В. И. Фрейман",
+    title: "Моделирование системы цифровой ФАПЧ для радиотехнических систем" },
+  { id: "s4-4", sec: 4, time: "", speaker: "М. В. Вершинин", fmt: "очно", org: PGTU, authors: "М. В. Вершинин",
+    title: "Оценка точности восстановления временных вариаций ПЭС с использованием различных комбинаций предикторов машинного обучения" },
+  { id: "s4-5", sec: 4, time: "", speaker: "Н. А. Короткова", fmt: "очно", org: PGTU, authors: "Н. А. Короткова, Н. А. Конкин",
+    title: "Выбор параметров робастной фильтрации временных рядов параметров ионосферы по границе сохранения информативности" },
+  { id: "s4-6", sec: 4, time: "", speaker: "Н. А. Короткова", fmt: "очно", org: PGTU, authors: "Н. А. Короткова",
+    title: "Широтная зависимость точности суточного ML-прогноза foF2: разделение вкладов амплитуды вариаций foF2 и качества модели" },
+  { id: "s4-7", sec: 4, time: "", speaker: "Н. А. Короткова", fmt: "очно", org: PGTU, authors: "Н. А. Короткова",
+    title: "Полнота ионосферных данных и ошибка суточного ML-прогноза foF2: коллинеарность показателей и предел обнаружения корреляции" },
+];
+
+/* ======================= ПРИЛОЖЕНИЕ ======================= */
+const DEMO = !CONFIG.SCRIPT_URL.trim();
+const NC = CONFIG.CRITERIA.length, SMAX = CONFIG.SCALE_MAX, MAXT = NC * SMAX;
+const TALK = {};
+TALKS.forEach((t, i) => { t.idx = i; t.no = TALKS.filter(x => x.sec === t.sec).indexOf(t) + 1; TALK[t.id] = t; });
+
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Нормализация имени эксперта (та же, что norm_ в Code.gs)
+const norm = s => String(s || "").toLowerCase().replace(/ё/g, "е").replace(/\s*\.\s*/g, ". ").replace(/\s+/g, " ").trim();
+const clean = s => String(s || "").replace(/\s+/g, " ").trim();
+const fmtNum = x => x.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+const hhmm = d => d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 10 || h >= 20) ? b : c; };
+const whenShort = t => t.time ? t.time.split("–")[0] : "№ " + t.no;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} },
+};
+
+let juror = "", code = "", jkey = "", role = "juror";
+let data = {}, pending = new Set(), errs = new Set();
+let flushTimer = 0, retryTimer = 0, flushing = false, fatal = "", warnedLS = false;
+let cardEl = {}, filter = LS.get("rwp_filter", "all"), tab = "rate", resMode = "all", rateScroll = 0;
+let lastAll = null, lastAt = null, resBusy = false, lastResults = null;
+const isAdmin = () => DEMO || role === "admin";
+
+/* ---------- запись оценки ---------- */
+function normRec(r) {
+  r = r && typeof r === "object" ? r : {};
+  const s = Array.isArray(r.s) ? r.s.slice(0, NC) : [];
+  while (s.length < NC) s.push(null);
+  return {
+    s: s.map(v => (v === null || v === "" ? null : Number(v))).map(v => (Number.isInteger(v) && v >= 1 && v <= SMAX ? v : null)),
+    st: r.st === "absent" || r.st === "abstain" ? r.st : "",
+    cm: typeof r.cm === "string" ? r.cm : "",
+    ts: +r.ts || 0,
+  };
+}
+const filled = r => r.s.filter(v => v != null).length;
+const isComplete = r => !r.st && r.s.every(v => v != null);
+const isDone = r => !!r.st || isComplete(r);
+const sumOf = r => r.s.reduce((a, v) => a + (v || 0), 0);
+
+function saveLocal() {
+  const ok = LS.set("rwp_data_" + jkey, data) & LS.set("rwp_pending_" + jkey, Array.from(pending));
+  if (!ok && !warnedLS) { warnedLS = true; toast("Не удаётся сохранить на телефоне. Не закрывайте страницу, пока оценки не отправятся.", 6000); }
+}
+
+function change(id, fn) {
+  const r = data[id] = normRec(data[id]);
+  fn(r);
+  r.ts = Math.max(Date.now(), r.ts + 1);
+  pending.add(id);
+  saveLocal();
+  refreshCard(id); refreshProgress(); refreshSync();
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(flush, 500);
+}
+
+/* ---------- сервер ---------- */
+class NetError extends Error {}
+async function api(params, body) {
+  const url = CONFIG.SCRIPT_URL.trim();
+  const ctl = new AbortController();
+  // Apps Script иногда отвечает 30+ секунд — ждём до минуты; повтор после таймаута безопасен (upsert по ts)
+  const timer = setTimeout(() => ctl.abort(), 60000);
+  try {
+    let u = url;
+    const opt = { signal: ctl.signal, redirect: "follow" };
+    // POST без Content-Type (по умолчанию text/plain), чтобы не было CORS-preflight: Apps Script не отвечает на OPTIONS
+    if (body) { opt.method = "POST"; opt.body = JSON.stringify(body); }
+    else u += (url.includes("?") ? "&" : "?") + new URLSearchParams(Object.assign({}, params, { _: Date.now() }));
+    let resp, txt;
+    try { resp = await fetch(u, opt); txt = await resp.text(); } catch (e) { throw new NetError("network"); }
+    try { return JSON.parse(txt); } catch (e) { throw new NetError(resp.ok ? "not_json" : "http_" + resp.status); }
+  } finally { clearTimeout(timer); }
+}
+
+function payload(id) {
+  const r = normRec(data[id]), t = TALK[id];
+  return { action: "save", code, juror, id, title: t.speaker + " — " + t.title, scores: r.s,
+    total: isComplete(r) ? sumOf(r) : null, status: r.st, comment: r.cm, ts: r.ts };
+}
+
+function demoWrite() {
+  const all = LS.get("rwp_demo_all", {});
+  all[jkey] = { name: juror, data };
+  LS.set("rwp_demo_all", all);
+}
+
+async function flush() {
+  clearTimeout(flushTimer); clearTimeout(retryTimer);
+  if (!jkey || !pending.size || fatal) { refreshSync(); return; }
+  if (DEMO) { demoWrite(); pending.clear(); errs.clear(); saveLocal(); refreshAll(); return; }
+  if (flushing) return;
+  flushing = true;
+  const me = jkey;
+  let failed = false;
+  for (const id of Array.from(pending)) {
+    const sentTs = normRec(data[id]).ts;
+    let res;
+    try { res = await api(null, payload(id)); }
+    catch (e) { if (jkey === me) { failed = true; pending.forEach(x => errs.add(x)); } break; }
+    if (jkey !== me) break;
+    if (res && res.ok) {
+      errs.delete(id);
+      if (normRec(data[id]).ts === sentTs) pending.delete(id);
+    } else if (res && res.error === "bad_code") { setFatal(); failed = true; break; }
+    else { errs.add(id); failed = true; }
+    saveLocal(); refreshCard(id); refreshSync();
+  }
+  flushing = false;
+  if (jkey !== me) { if (jkey) flush(); return; }
+  saveLocal(); refreshAll();
+  if (failed) { if (!fatal) retryTimer = setTimeout(flush, 8000); }
+  else if (pending.size) flushTimer = setTimeout(flush, 0);
+}
+
+// При уходе со страницы — последняя попытка отправить неотправленное (повторная отправка безопасна: upsert по ts)
+function beaconAll() {
+  if (!jkey || !pending.size) return;
+  if (DEMO) { flush(); return; }
+  if (fatal || !navigator.sendBeacon) return;
+  pending.forEach(id => { try { navigator.sendBeacon(CONFIG.SCRIPT_URL.trim(), JSON.stringify(payload(id))); } catch (e) {} });
+}
+
+function setFatal() {
+  fatal = "bad_code";
+  clearTimeout(retryTimer);
+  refreshAll();
+}
+
+function setRole(r) {
+  if (DEMO || !r || r === role) return;
+  role = r; LS.set("rwp_role", role);
+  refreshWho();
+}
+
+async function syncMine() {
+  if (DEMO) return;
+  const me = jkey;
+  try {
+    const res = await api({ action: "mine", code, juror });
+    if (jkey !== me) return;
+    if (!res.ok) { if (res.error === "bad_code") setFatal(); return; }
+    setRole(res.role);
+    for (const row of res.rows || []) {
+      if (!TALK[row.id] || pending.has(row.id)) continue;
+      if (data[row.id] && data[row.id].ts > row.ts) continue;
+      data[row.id] = normRec({ s: row.scores, st: row.status, cm: row.comment, ts: row.ts });
+    }
+    saveLocal(); refreshAll();
+  } catch (e) { /* нет связи — работаем с локальными данными */ }
+}
+
+/* ---------- отрисовка списка ---------- */
+function talkHTML(t) {
+  const crit = CONFIG.CRITERIA.map((name, c) => {
+    let pts = "";
+    for (let v = 1; v <= SMAX; v++) pts += `<button type="button" class="pt" data-c="${c}" data-v="${v}" aria-pressed="false" aria-label="${esc(name)}: ${v}">${v}</button>`;
+    return `<div class="crit"><div class="cl"><span>${esc(name)}</span><b class="cv" data-c="${c}"></b></div><div class="pts">${pts}</div></div>`;
+  }).join("");
+  return `<article class="card" data-id="${t.id}">
+<button type="button" class="sum" aria-expanded="false">
+<span class="when">${esc(whenShort(t))}</span>
+<span class="main"><span class="ttl">${esc(t.title)}</span><span class="who2">${esc(t.speaker)} · ${esc(t.fmt)}</span></span>
+<span class="side"><span class="score"></span><span class="sv"></span></span>
+</button>
+<div class="body"><div class="inner"><div class="pad">
+<p class="meta">${t.time ? esc(t.time) : "№ " + t.no + " в секции"} · ${esc(SECTIONS[t.sec].room)}<br>
+<b>Авторы:</b> ${esc(t.authors)}<br><b>Докладчик:</b> ${esc(t.speaker)} (${esc(t.fmt)}), ${esc(t.org)}</p>
+${crit}
+<div class="flags"><button type="button" class="flag" data-flag="absent" aria-pressed="false">Доклад не состоялся</button><button type="button" class="flag" data-flag="abstain" aria-pressed="false">Воздерживаюсь</button></div>
+<textarea rows="2" maxlength="1000" placeholder="Комментарий (необязательно)" aria-label="Комментарий"></textarea>
+<div class="foot"><button type="button" class="btn fold">Свернуть</button><button type="button" class="btn next">Следующий →</button></div>
+</div></div></div>
+</article>`;
+}
+
+function renderList() {
+  $("#list").innerHTML = Object.keys(SECTIONS).map(s => `<section class="secblock" data-sec="${s}">
+<h2 class="sech"><span class="secno">Секция ${s}<em data-sec-meta="${s}"></em></span><span class="secname">${esc(SECTIONS[s].name)}</span></h2>
+<div class="cards">${TALKS.filter(t => t.sec === +s).map(talkHTML).join("")}</div></section>`).join("");
+  cardEl = {};
+  $$("#list .card").forEach(c => { cardEl[c.dataset.id] = c; });
+}
+
+function refreshCard(id) {
+  const card = cardEl[id];
+  if (!card) return;
+  const r = normRec(data[id]), n = filled(r), comp = isComplete(r);
+  card.classList.toggle("done", comp);
+  card.classList.toggle("part", !r.st && n > 0 && !comp);
+  card.classList.toggle("flagged", !!r.st);
+  $(".score", card).innerHTML = r.st === "absent" ? "не было" : r.st === "abstain" ? "воздерж."
+    : comp ? `${sumOf(r)}<small>/${MAXT}</small>` : n ? `${sumOf(r)}<small>&nbsp;· ${n}/${NC}</small>` : "—";
+  $$(".pt", card).forEach(b => b.setAttribute("aria-pressed", r.s[+b.dataset.c] === +b.dataset.v));
+  $$(".cv", card).forEach(b => { const v = r.s[+b.dataset.c]; b.textContent = v == null ? "" : v; });
+  $$(".flag", card).forEach(b => b.setAttribute("aria-pressed", r.st === b.dataset.flag));
+  const ta = $("textarea", card);
+  if (document.activeElement !== ta && ta.value !== r.cm) ta.value = r.cm;
+  const st = pending.has(id) ? (errs.has(id) || fatal ? "error" : "saving") : r.ts ? "saved" : "";
+  const sv = $(".sv", card);
+  sv.className = "sv " + st;
+  sv.textContent = { saving: "Сохраняю…", saved: "✓ Сохранено", error: "⚠ Не отправлено", "": "" }[st];
+}
+
+function refreshProgress() {
+  const list = filter === "all" ? TALKS : TALKS.filter(t => t.sec === +filter);
+  const done = list.filter(t => isDone(normRec(data[t.id]))).length;
+  $("#progTxt").textContent = `Оценено ${done} из ${list.length}`;
+  $("#progBar").style.width = (list.length ? done / list.length * 100 : 0) + "%";
+  for (const s in SECTIONS) {
+    const ts = TALKS.filter(t => t.sec === +s), el = $(`[data-sec-meta="${s}"]`);
+    if (el) el.textContent = `${SECTIONS[s].room} · ${ts.filter(t => isDone(normRec(data[t.id]))).length}/${ts.length}`;
+  }
+}
+
+function refreshSync() {
+  const el = $("#syncTxt");
+  let txt, cls = "";
+  if (DEMO) { txt = "демо-режим"; cls = "warn"; }
+  else if (fatal) { txt = "⚠ неверный код комиссии"; cls = "err"; }
+  else if (!pending.size) { txt = "✓ всё отправлено"; cls = "ok"; }
+  else if (errs.size || !navigator.onLine) { txt = `⚠ не отправлено: ${pending.size}`; cls = "err"; }
+  else txt = "сохраняю…";
+  el.textContent = txt;
+  el.className = "sync " + cls;
+  $("#banner").hidden = !fatal;
+}
+
+function refreshWho() {
+  $("#whoName").textContent = juror;
+  $("#whoRole").textContent = isAdmin() ? "администратор" : "эксперт";
+  $("#ava").textContent = (juror.match(/[A-Za-zА-Яа-яЁё]/) || ["?"])[0].toUpperCase();
+  $('#resMode [data-mode="stats"]').hidden = !isAdmin();
+  if (!isAdmin() && resMode === "stats") setResMode("all");
+}
+
+function setResMode(m) {
+  resMode = m;
+  $$("#resMode button").forEach(x => x.classList.toggle("on", x.dataset.mode === m));
+  if (lastResults) renderResults(lastResults.all);
+}
+
+function refreshAll() { TALKS.forEach(t => refreshCard(t.id)); refreshProgress(); refreshSync(); }
+
+function applyFilter() {
+  if (!["all", "1", "2", "3", "4"].includes(String(filter))) filter = "all";
+  $$("#secFilter button").forEach(b => b.classList.toggle("on", b.dataset.sec === String(filter)));
+  $$(".secblock").forEach(b => { b.hidden = filter !== "all" && b.dataset.sec !== String(filter); });
+  refreshProgress();
+}
+
+/* ---------- раскрытие карточек ---------- */
+function setOpen(card, open, instant) {
+  if (instant) { card.classList.add("instant"); setTimeout(() => card.classList.remove("instant"), 60); }
+  card.classList.toggle("open", open);
+  $(".sum", card).setAttribute("aria-expanded", open);
+}
+function toggle(card, open = !card.classList.contains("open")) {
+  $$(".card.open").forEach(c => { if (c !== card) setOpen(c, false, true); });
+  setOpen(card, open, false);
+  if (open) requestAnimationFrame(() => {
+    const hb = $(".top").getBoundingClientRect().bottom + 8, top = card.getBoundingClientRect().top;
+    if (top < hb || top > innerHeight * 0.6) window.scrollBy({ top: top - hb, behavior: reduceMotion ? "auto" : "smooth" });
+  });
+}
+function openNext(card) {
+  const cards = $$(".secblock:not([hidden]) .card"), nx = cards[cards.indexOf(card) + 1];
+  if (nx) toggle(nx, true); else { toggle(card, false); toast("Это последний доклад в списке"); }
+}
+
+/* ---------- итоги ---------- */
+function groupRows(rows) {
+  const all = {};
+  for (const row of rows) {
+    const k = norm(row.juror);
+    if (!k || !TALK[row.id]) continue;
+    (all[k] = all[k] || { name: row.juror, data: {} }).data[row.id] = normRec({ s: row.scores, st: row.status, cm: row.comment, ts: row.ts });
+  }
+  return all;
+}
+
+function computeResults(all) {
+  const per = {};
+  for (const j of Object.values(all)) {
+    for (const id in j.data || {}) {
+      const r = normRec(j.data[id]);
+      if (!TALK[id] || !isComplete(r)) continue;
+      (per[id] = per[id] || []).push({ name: j.name, total: sumOf(r), s: r.s });
+    }
+  }
+  return TALKS.filter(t => per[t.id]).map(t => {
+    const list = per[t.id], n = list.length, tot = list.map(x => x.total), avg = mean(tot);
+    return { t, n, list, avg, min: Math.min(...tot), max: Math.max(...tot),
+      sd: Math.sqrt(mean(tot.map(x => (x - avg) * (x - avg)))),
+      crit: CONFIG.CRITERIA.map((_, c) => mean(list.map(x => x.s[c]))) };
+  });
+}
+const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
+const signed = x => (x > 0 ? "+" : x < 0 ? "−" : "") + fmtNum(Math.abs(x));
+const pct = (x, max) => Math.max(0, Math.min(100, max ? x / max * 100 : 0)).toFixed(1) + "%";
+
+// Одинаковые средние получают одинаковое место
+function rankRows(rows) {
+  const key = r => Math.round(r.avg * 1000);
+  const s = rows.slice().sort((a, b) => key(b) - key(a) || a.t.idx - b.t.idx);
+  s.forEach((r, i) => { r.rank = i && key(s[i - 1]) === key(r) ? s[i - 1].rank : i + 1; });
+  return s;
+}
+
+function rowHTML(r) {
+  const admin = isAdmin();
+  const crit = CONFIG.CRITERIA.map((c, i) => `<span>${esc(c)}</span><b>${fmtNum(r.crit[i])}</b>`).join("");
+  const jur = admin ? r.list.slice().sort((a, b) => b.total - a.total).map(x => `<span>${esc(x.name)}</span><b>${x.total}</b>`).join("")
+    + (r.n > 1 ? `<span>Мин – макс · ст. откл.</span><b>${r.min}–${r.max} · ${fmtNum(r.sd)}</b>` : "") : "";
+  return `<div class="rrow${r.rank <= 3 ? " p" + r.rank : ""}">
+<div class="place">${r.rank}</div>
+<div><div class="rttl">${esc(r.t.title)}</div><div class="rsub">${esc(r.t.speaker)} · секция ${r.t.sec}</div></div>
+<div class="ravg"><b>${fmtNum(r.avg)}</b><span>${admin ? r.n + " " + plural(r.n, "эксперт", "эксперта", "экспертов") : "из " + MAXT}</span></div>
+<details class="rdet" data-key="r-${r.t.id}"><summary>Подробнее</summary>
+<div class="kv">${crit}</div>${jur ? `<div class="kv">${jur}</div>` : ""}</details>
+</div>`;
+}
+
+function jurorStats(all) {
+  return Object.values(all).map(j => {
+    const recs = TALKS.map(t => j.data && j.data[t.id] ? normRec(j.data[t.id]) : null).filter(r => r && r.ts);
+    const comp = recs.filter(isComplete);
+    return { name: j.name, done: recs.filter(isDone).length, n: comp.length,
+      mean: comp.length ? mean(comp.map(sumOf)) : null, last: Math.max(0, ...recs.map(r => r.ts)) };
+  }).filter(j => j.last).sort((a, b) => a.name.localeCompare(b.name, "ru"));
+}
+
+function statsHTML(all, rows) {
+  const jur = jurorStats(all);
+  const totals = rows.flatMap(r => r.list.map(x => x.total));
+  if (!totals.length) return `<p class="empty">Пока нет полных оценок — статистика появится после первых оценок экспертов.</p>`;
+  const overall = mean(totals);
+  const tile = (v, label) => `<div class="tile glass"><b>${v}</b><span>${label}</span></div>`;
+  const stRow = (label, sub, value, width) =>
+    `<li class="st"><div class="stl"><span>${label}${sub ? `<small class="sm">${sub}</small>` : ""}</span><b>${value}</b></div><div class="meter"><i style="width:${width}"></i></div></li>`;
+  let h = `<div class="tiles">
+${tile(jur.length, plural(jur.length, "эксперт оценивает", "эксперта оценивают", "экспертов оценивают"))}
+${tile(totals.length, plural(totals.length, "оценка засчитана", "оценки засчитаны", "оценок засчитано"))}
+${tile(`${rows.length}<small>/${TALKS.length}</small>`, "докладов в рейтинге")}
+${tile(`${fmtNum(overall)}<small>/${MAXT}</small>`, "средняя сумма баллов")}
+</div>`;
+
+  h += `<div class="box glass"><h3>По секциям</h3><ul>${Object.keys(SECTIONS).map(s => {
+    const rr = rankRows(rows.filter(r => r.t.sec === +s)), tot = TALKS.filter(t => t.sec === +s).length;
+    if (!rr.length) return stRow(`Секция ${s}`, `0 из ${tot} докладов`, "—", "0%");
+    const m = mean(rr.map(r => r.avg)), lead = rr.filter(r => r.rank === 1);
+    return stRow(`Секция ${s}`, `${rr.length} из ${tot} докладов · лидер: ${lead.map(r => esc(r.t.speaker)).join(", ")} (${fmtNum(lead[0].avg)})`,
+      fmtNum(m), pct(m, MAXT));
+  }).join("")}</ul></div>`;
+
+  const crit = CONFIG.CRITERIA.map((_, c) => mean(rows.flatMap(r => r.list.map(x => x.s[c]))));
+  h += `<div class="box glass"><h3>Средний балл по критериям (из ${SMAX})</h3><ul>${CONFIG.CRITERIA.map((name, c) =>
+    stRow(esc(name), "", fmtNum(crit[c]), pct(crit[c], SMAX))).join("")}</ul></div>`;
+
+  const dist = Array(SMAX).fill(0);
+  rows.forEach(r => r.list.forEach(x => x.s.forEach(v => { dist[v - 1]++; })));
+  const dn = dist.reduce((a, b) => a + b, 0), dmax = Math.max(...dist);
+  let dl = "";
+  for (let v = SMAX; v >= 1; v--) dl += stRow(`${v} ${plural(v, "балл", "балла", "баллов")}`, "", `${dist[v - 1]} · ${Math.round(dist[v - 1] / dn * 100)}%`, pct(dist[v - 1], dmax));
+  h += `<div class="box glass"><h3>Распределение баллов</h3><ul>${dl}</ul></div>`;
+
+  h += `<div class="box glass"><h3>Эксперты</h3><ul>${jur.map(j => stRow(esc(j.name),
+    `${j.mean == null ? "нет полных оценок" : "средняя сумма " + fmtNum(j.mean) + " (" + signed(j.mean - overall) + " к общей)"} · изменено в ${hhmm(new Date(j.last))}`,
+    `${j.done}/${TALKS.length}`, pct(j.done, TALKS.length))).join("")}</ul></div>`;
+
+  const spread = rows.filter(r => r.n > 1).sort((a, b) => (b.max - b.min) - (a.max - a.min) || b.sd - a.sd).slice(0, 5);
+  if (spread.length) h += `<div class="box glass"><h3>Наибольшие расхождения экспертов</h3><ul>${spread.map(r =>
+    `<li><span>${esc(r.t.speaker)} — ${esc(r.t.title)}<small class="sm">${r.n} ${plural(r.n, "оценка", "оценки", "оценок")}: ${r.list.map(x => x.total).join(", ")}</small></span><b>${r.min}–${r.max}</b></li>`).join("")}</ul></div>`;
+  return h;
+}
+
+function renderResults(all) {
+  const admin = isAdmin();
+  const openState = {};
+  $$("#resList details").forEach(d => { openState[d.dataset.key] = d.open; });
+  const rows = computeResults(all);
+  if (resMode === "stats" && admin) {
+    $("#resList").innerHTML = statsHTML(all, rows) + exportHTML();
+    lastResults = { all, rows };
+    return;
+  }
+  const groups = resMode === "sec"
+    ? Object.keys(SECTIONS).map(s => ({ s, rows: rankRows(rows.filter(r => r.t.sec === +s)) }))
+    : [{ s: "", rows: rankRows(rows) }];
+  let h = `<p class="rnote">${admin
+    ? `Средний суммарный балл экспертов (максимум ${MAXT}). Учитываются только полностью заполненные оценки без отметок «не состоялся» и «воздерживается».`
+    : "Ваши оценки, отсортированные по сумме баллов. Сводные итоги всех экспертов видит администратор."}</p>`;
+  for (const g of groups) {
+    if (g.s) h += `<h2 class="sech"><span class="secno">Секция ${g.s}</span><span class="secname">${esc(SECTIONS[g.s].name)}</span></h2>`;
+    h += g.rows.length ? `<div class="cards">${g.rows.map(rowHTML).join("")}</div>` : `<p class="empty">Пока нет полных оценок</p>`;
+  }
+  if (admin) {
+    const js = jurorStats(all);
+    h += `<details class="box glass" data-key="jurors" open><summary>Эксперты: ${js.length}</summary><ul>${js.map(j =>
+      `<li class="jrow"><span>${esc(j.name)}<small class="sm">${j.done}/${TALKS.length} · изменено в ${hhmm(new Date(j.last))}</small></span>` +
+      `<button type="button" class="btn del" data-del="${esc(j.name)}" aria-label="Удалить оценки: ${esc(j.name)}">Удалить</button></li>`).join("")
+      || "<li><span>Пока никто не оценивал</span></li>"}</ul></details>`;
+  }
+  const ranked = new Set(rows.map(r => r.t.id));
+  const absent = new Set();
+  Object.values(all).forEach(j => { for (const id in j.data || {}) if (normRec(j.data[id]).st === "absent") absent.add(id); });
+  const un = TALKS.filter(t => !ranked.has(t.id));
+  if (un.length) h += `<details class="box glass" data-key="unrated"><summary>Без полных оценок: ${un.length}</summary><ul>${un.map(t =>
+    `<li><span>${esc(t.speaker)} — ${esc(t.title)}</span>${absent.has(t.id) ? "<i>не состоялся</i>" : ""}</li>`).join("")}</ul></details>`;
+  if (admin) h += exportHTML();
+  $("#resList").innerHTML = h;
+  $$("#resList details").forEach(d => { if (d.dataset.key in openState) d.open = openState[d.dataset.key]; });
+  lastResults = { all, rows };
+}
+
+const exportHTML = () => `<div class="exp"><button type="button" class="btn glass" data-csv="rank">⬇ Рейтинг, CSV</button><button type="button" class="btn glass" data-csv="raw">⬇ Все оценки, CSV</button></div>`;
+
+async function loadResults() {
+  if (resBusy || !jkey) return;
+  const me = jkey;
+  let all, note;
+  if (DEMO) { all = LS.get("rwp_demo_all", {}); note = "Демо-режим: оценки, введённые на этом устройстве"; }
+  else if (!isAdmin()) { all = {}; note = ""; }
+  else {
+    resBusy = true;
+    $("#btnRefresh").classList.add("spin");
+    $("#resUpd").textContent = "Загрузка…";
+    let ok = false;
+    try {
+      const r = await api({ action: "all", code, juror });
+      if (r.ok) { lastAll = groupRows(r.rows || []); lastAt = new Date(); ok = true; }
+      else if (r.error === "bad_code") setFatal();
+      else if (r.error === "forbidden") { setRole("juror"); toast("Код не даёт прав администратора"); }
+    } catch (e) { /* нет связи */ }
+    resBusy = false;
+    $("#btnRefresh").classList.remove("spin");
+    if (jkey !== me) return;
+    all = lastAll || {};
+    note = ok ? "Обновлено в " + hhmm(lastAt) : lastAt ? `⚠ Нет связи — данные на ${hhmm(lastAt)}` : "⚠ Не удалось загрузить оценки других экспертов";
+  }
+  all = Object.assign({}, all, { [jkey]: { name: juror, data } });
+  renderResults(all);
+  $("#resUpd").textContent = note;
+  $("#resUpd").hidden = !note;
+}
+
+// Удаление всех оценок эксперта (например, вошёл под неверным именем).
+// На сервере строки переносятся на лист «Удалённые».
+async function deleteJuror(name, btn) {
+  if (!isAdmin() || !name) return;
+  const self = norm(name) === jkey;
+  if (!confirm(`Удалить все оценки эксперта «${name}»?\n\nСтроки перенесутся на лист «Удалённые» в таблице. ` +
+    `Если эксперт ещё работает под этим именем, сначала попросите его нажать «Сменить эксперта», иначе его новые правки снова появятся.`)) return;
+  if (DEMO) {
+    const all = LS.get("rwp_demo_all", {});
+    delete all[norm(name)];
+    LS.set("rwp_demo_all", all);
+  } else {
+    btn.disabled = true;
+    btn.textContent = "Удаляю…";
+    try {
+      const r = await api(null, { action: "delete", code, juror, target: name });
+      if (!r.ok) {
+        btn.disabled = false; btn.textContent = "Удалить";
+        return toast(r.error === "forbidden" ? "Удалять оценки может только администратор" : "Не удалось удалить: " + (r.error || "ошибка сервера"));
+      }
+      toast(`Удалено оценок: ${r.deleted}`);
+    } catch (e) {
+      btn.disabled = false; btn.textContent = "Удалить";
+      return toast("Нет связи с сервером — оценки не удалены");
+    }
+  }
+  if (self) { data = {}; pending.clear(); errs.clear(); saveLocal(); refreshAll(); }
+  if (DEMO) toast("Оценки удалены");
+  setTimeout(loadResults, resBusy ? 1500 : 0);  // если идёт автообновление — перезагрузить после него
+}
+
+function downloadCSV(kind) {
+  if (!lastResults) return;
+  const q = v => { const s = String(v == null ? "" : v); return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const num = x => String(Math.round(x * 100) / 100).replace(".", ",");
+  let rows;
+  if (kind === "rank") {
+    rows = [["Место", "Место в секции", "Секция", "ID", "Докладчик", "Доклад", "Средний балл", "Экспертов", "Мин", "Макс", "Ст. откл."].concat(CONFIG.CRITERIA)];
+    const inSec = {};
+    Object.keys(SECTIONS).forEach(s => rankRows(lastResults.rows.filter(r => r.t.sec === +s)).forEach(r => { inSec[r.t.id] = r.rank; }));
+    rankRows(lastResults.rows).forEach(r => rows.push([r.rank, inSec[r.t.id], r.t.sec, r.t.id, r.t.speaker, r.t.title, num(r.avg), r.n, r.min, r.max, num(r.sd)].concat(r.crit.map(num))));
+  } else {
+    rows = [["Эксперт", "Секция", "ID", "Докладчик", "Доклад"].concat(CONFIG.CRITERIA, ["Сумма", "Статус", "Комментарий"])];
+    Object.values(lastResults.all).forEach(j => TALKS.forEach(t => {
+      const raw = j.data && j.data[t.id];
+      if (!raw) return;
+      const r = normRec(raw);
+      if (!r.ts && !filled(r) && !r.st) return;
+      rows.push([j.name, t.sec, t.id, t.speaker, t.title].concat(r.s.map(v => v == null ? "" : v),
+        [isComplete(r) ? sumOf(r) : "", { absent: "не состоялся", abstain: "воздерживается" }[r.st] || "", r.cm]));
+    }));
+  }
+  const csv = "﻿" + rows.map(r => r.map(q).join(";")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `RWP-2026_${kind === "rank" ? "рейтинг" : "оценки"}_${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+/* ---------- навигация ---------- */
+function setTab(t) {
+  if (t === tab) return;
+  if (tab === "rate") rateScroll = scrollY;
+  tab = t;
+  $$(".tab").forEach(b => { b.classList.toggle("active", b.dataset.tab === t); b.setAttribute("aria-selected", b.dataset.tab === t); });
+  $(".tabbar").dataset.i = t === "res" ? "1" : "0";
+  $("#rateView").hidden = t !== "rate";
+  $("#resView").hidden = t !== "res";
+  window.scrollTo(0, t === "rate" ? rateScroll : 0);
+  if (t === "res") loadResults();
+}
+
+let toastTimer = 0;
+function toast(msg, ms = 2800) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), ms);
+}
+
+/* ---------- вход и выход ---------- */
+function showLogin(name) {
+  $("#appView").hidden = true;
+  $("#loginView").hidden = false;
+  $("#inName").value = name || "";
+  $("#inCode").value = LS.get("rwp_code", "");
+  loginError("");
+}
+
+function loginError(msg, offerOffline) {
+  $("#loginErr").textContent = msg;
+  $("#btnOffline").hidden = !offerOffline;
+}
+
+function enterApp() {
+  jkey = norm(juror);
+  fatal = ""; errs = new Set(); data = {};
+  const raw = LS.get("rwp_data_" + jkey, {});
+  for (const id in raw) if (TALK[id]) data[id] = normRec(raw[id]);
+  pending = new Set((LS.get("rwp_pending_" + jkey, []) || []).filter(id => TALK[id]));
+  renderList();
+  applyFilter();
+  refreshWho();
+  $("#loginView").hidden = true;
+  $("#appView").hidden = false;
+  tab = "";
+  setTab(isAdmin() && !DEMO ? "res" : "rate");
+  refreshAll();
+  if (DEMO) flush(); else syncMine().then(flush);
+}
+
+function login(name, cd, r) {
+  juror = name; code = cd; role = DEMO ? "admin" : r || "juror";
+  LS.set("rwp_juror", juror); LS.set("rwp_code", code); LS.set("rwp_role", role);
+  enterApp();
+}
+
+function logout() {
+  beaconAll();
+  clearTimeout(flushTimer); clearTimeout(retryTimer);
+  jkey = ""; juror = ""; data = {}; pending = new Set(); errs = new Set(); fatal = "";
+  lastAll = null; lastAt = null; lastResults = null;
+  LS.del("rwp_juror"); LS.del("rwp_role");
+}
+
+/* ---------- события ---------- */
+$("#loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = clean($("#inName").value), cd = $("#inCode").value.trim();
+  if (name.length < 3) return loginError("Введите фамилию и инициалы");
+  if (!DEMO && !cd) return loginError("Введите код комиссии");
+  if (DEMO) return login(name, "");
+  const btn = $("#btnLogin");
+  btn.disabled = true; btn.textContent = "Проверяю код…"; loginError("");
+  const slow = setTimeout(() => { btn.textContent = "Сервер отвечает медленно, подождите…"; }, 6000);
+  try {
+    const r = await api({ action: "ping", code: cd, juror: name });
+    if (!r.ok) return loginError(r.error === "bad_code" ? "Неверный код комиссии" : "Ошибка сервера: " + (r.error || "неизвестная"));
+    if (r.criteria && r.criteria !== NC) return loginError("Критерии на сервере не совпадают со страницей. Сообщите организатору.");
+    login(name, cd, r.role);
+  } catch (err) {
+    loginError(err.message === "not_json"
+      ? "Сервер ответил не так, как ожидалось. Проверьте развертывание Apps Script (доступ «Все»)."
+      : "Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.", true);
+  } finally { clearTimeout(slow); btn.disabled = false; btn.textContent = "Войти"; }
+});
+
+$("#btnOffline").addEventListener("click", () => {
+  const name = clean($("#inName").value), cd = $("#inCode").value.trim();
+  if (name.length < 3 || !cd) return loginError("Введите фамилию и код комиссии", true);
+  login(name, cd, "juror");
+  toast("Код не проверен. Оценки сохранятся на телефоне и отправятся, когда появится связь.", 5000);
+});
+
+$("#btnWho").addEventListener("click", () => {
+  const n = pending.size;
+  const msg = n && !DEMO
+    ? `Есть неотправленные оценки (${n}). Они останутся на этом телефоне и отправятся, когда вы снова войдёте под этим именем.\n\nСменить эксперта?`
+    : "Сменить эксперта?";
+  if (!confirm(msg)) return;
+  logout();
+  showLogin("");
+});
+
+$("#banner").addEventListener("click", () => { const name = juror; logout(); showLogin(name); });
+
+$("#list").addEventListener("click", e => {
+  const card = e.target.closest(".card");
+  if (!card) return;
+  const id = card.dataset.id;
+  const pt = e.target.closest(".pt");
+  if (pt) {
+    const c = +pt.dataset.c, v = +pt.dataset.v;
+    change(id, r => { r.s[c] = r.s[c] === v ? null : v; r.st = ""; });
+    if (navigator.vibrate) navigator.vibrate(6);
+    return;
+  }
+  const fl = e.target.closest(".flag");
+  if (fl) { change(id, r => { r.st = r.st === fl.dataset.flag ? "" : fl.dataset.flag; }); return; }
+  if (e.target.closest(".next")) return openNext(card);
+  if (e.target.closest(".sum") || e.target.closest(".fold")) toggle(card);
+});
+
+$("#list").addEventListener("input", e => {
+  if (!e.target.matches("textarea")) return;
+  const v = e.target.value;
+  change(e.target.closest(".card").dataset.id, r => { r.cm = v; });
+});
+
+$("#secFilter").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  filter = b.dataset.sec;
+  LS.set("rwp_filter", filter);
+  applyFilter();
+});
+
+$("#resMode").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (b) setResMode(b.dataset.mode);
+});
+
+$("#resList").addEventListener("click", e => {
+  const b = e.target.closest("[data-csv]");
+  if (b) return downloadCSV(b.dataset.csv);
+  const d = e.target.closest("[data-del]");
+  if (d) deleteJuror(d.dataset.del, d);
+});
+$("#btnRefresh").addEventListener("click", loadResults);
+$$(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+
+addEventListener("online", () => { refreshSync(); flush(); });
+addEventListener("offline", refreshSync);
+addEventListener("pagehide", beaconAll);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") { flush(); if (tab === "res" && jkey) loadResults(); }
+  else beaconAll();
+});
+setInterval(() => { if (jkey && tab === "res" && !document.hidden && isAdmin() && !DEMO) loadResults(); }, 60000);
+
+/* ---------- старт ---------- */
+(function init() {
+  $("#ttl").textContent = CONFIG.TITLE.replace(/-(?=\d)/g, "‑");  // не переносить «RWP-2026»
+  $("#subttl").textContent = CONFIG.SUBTITLE;
+  $("#hint").textContent = `Нажмите на доклад и поставьте баллы от 1 до ${SMAX} по каждому критерию. Повторное нажатие снимает балл. Всё сохраняется автоматически.`;
+  if (DEMO) { $("#codeField").hidden = true; $("#demoNote").hidden = false; }
+  const j = LS.get("rwp_juror", ""), c = LS.get("rwp_code", "");
+  if (j && (DEMO || c)) { juror = j; code = c; role = DEMO ? "admin" : LS.get("rwp_role", "juror"); enterApp(); }
+  else showLogin("");
+})();
+</script>
+</body>
+</html>
