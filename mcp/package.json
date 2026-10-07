@@ -1,0 +1,22 @@
+{
+  "name": "conf-kit-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP-сервер conf-kit: инструменты для чат-ботов поверх /api/v1 (stdio и Streamable HTTP)",
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "conf-kit-mcp": "server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "http": "node server.js --http"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.31.0",
+    "zod": "4.6.5"
+  }
+}

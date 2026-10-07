@@ -1,0 +1,230 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "conf-kit API",
+    "version": "1.0.0",
+    "description": "Программы конференций: проверка документа conf.program/v1, черновик мероприятия по API-ключу, ссылка-приглашение для человека, обратная связь. Инструкция для ботов: https://conf.konkin-nikita.ru/llms.txt"
+  },
+  "servers": [{ "url": "https://conf.konkin-nikita.ru" }],
+  "security": [{ "ApiKey": [] }],
+  "paths": {
+    "/api/v1/programs/validate": {
+      "post": {
+        "operationId": "validateProgram",
+        "summary": "Проверить программу без сохранения",
+        "description": "Нормализует документ, рассчитывает время по регламенту и возвращает отчёт: ошибки нужно исправить, предупреждения — показать пользователю. Ничего не сохраняет, ключ не нужен.",
+        "security": [],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Program" } } } },
+        "responses": {
+          "200": { "description": "Результат проверки", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidateResult" } } } }
+        }
+      }
+    },
+    "/api/v1/events": {
+      "post": {
+        "operationId": "createEvent",
+        "summary": "Создать черновик мероприятия из программы",
+        "description": "Документ с ошибками не сохраняется (422). В ответе invite_url — отдать пользователю, preview_url — для просмотра, draft_token — для правок до принятия приглашения.",
+        "parameters": [
+          { "name": "Idempotency-Key", "in": "header", "required": false, "description": "Повтор с тем же ключом не создаёт дубль", "schema": { "type": "string", "maxLength": 200 } }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProgramOrWrapper" } } } },
+        "responses": {
+          "201": { "description": "Черновик создан", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatedEvent" } } } },
+          "200": { "description": "Повтор с тем же Idempotency-Key: то же мероприятие, новые токены", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatedEvent" } } } },
+          "401": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "413": { "$ref": "#/components/responses/Error" },
+          "422": { "$ref": "#/components/responses/Rejected" },
+          "429": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/events/{id}/program": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "description": "id или адрес (slug) мероприятия", "schema": { "type": "string" } }],
+      "get": {
+        "operationId": "getEventProgram",
+        "summary": "Прочитать программу мероприятия",
+        "responses": {
+          "200": { "description": "Программа", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EventProgram" } } } },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "put": {
+        "operationId": "updateEventProgram",
+        "summary": "Заменить программу целиком (новая версия)",
+        "description": "Доступно ключу, создавшему черновик (право update_own), или с заголовком X-Draft-Token. Документ с ошибками не сохраняется.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProgramOrWrapper" } } } },
+        "responses": {
+          "200": { "description": "Сохранено", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SavedProgram" } } } },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "422": { "$ref": "#/components/responses/Rejected" }
+        }
+      }
+    },
+    "/api/v1/events/{id}/invite": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "post": {
+        "operationId": "newInviteLink",
+        "summary": "Новая ссылка-приглашение",
+        "description": "Прежняя ссылка перестаёт действовать. Пока черновик не принят — ключ, создавший его, или X-Draft-Token.",
+        "responses": {
+          "200": { "description": "Новая ссылка", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Invite" } } } },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/feedback": {
+      "post": {
+        "operationId": "sendFeedback",
+        "summary": "Сообщить, чего не хватило или что не работает",
+        "description": "Если функции не хватает — положи данные в extra, скажи пользователю и отправь сообщение. В ответе known_workaround, если обход уже известен.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Feedback" } } } },
+        "responses": {
+          "201": { "description": "Принято", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FeedbackAnswer" } } } },
+          "400": { "$ref": "#/components/responses/Error" },
+          "429": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/changelog": {
+      "get": {
+        "operationId": "getChangelog",
+        "summary": "Что нового в API и схеме",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Записи, новые сверху",
+            "content": { "application/json": { "schema": { "type": "object", "properties": {
+              "items": { "type": "array", "items": { "type": "object", "properties": {
+                "date": { "type": "string" }, "text": { "type": "string" }, "kind": { "type": "string" }, "area": { "type": "string" } } } } } } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKey": { "type": "apiKey", "in": "header", "name": "X-API-Key", "description": "Ключ ck_… выдаёт администратор сервиса" }
+    },
+    "responses": {
+      "Error": {
+        "description": "Ошибка",
+        "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "integer" }, "message": { "type": "string" } } } } }
+      },
+      "Rejected": {
+        "description": "Программа содержит ошибки и не сохранена — исправьте по отчёту",
+        "content": { "application/json": { "schema": { "type": "object", "properties": {
+          "ok": { "type": "boolean" }, "message": { "type": "string" }, "report": { "$ref": "#/components/schemas/Report" } } } } }
+      }
+    },
+    "schemas": {
+      "Program": {
+        "type": "object",
+        "description": "Документ conf.program/v1: event, sections, rooms, days[].sessions[].items[]. Полная схема с описаниями: https://conf.konkin-nikita.ru/schema/program.v1.json",
+        "properties": {
+          "schema": { "type": "string", "const": "conf.program/v1" },
+          "event": { "type": "object", "description": "title, date_from, date_to, city, venue, organizer, regulations, jury, extra" },
+          "sections": { "type": "array", "items": { "type": "object", "description": "no, title, short" } },
+          "rooms": { "type": "array", "items": { "type": "object", "description": "name, building" } },
+          "days": { "type": "array", "items": { "type": "object", "description": "date, title, sessions[]: title, room, start, chair, items[]: type, title, speaker, authors, start, duration, section, format, org, city" } }
+        },
+        "required": ["event", "days"]
+      },
+      "ProgramOrWrapper": {
+        "description": "Документ программы или обёртка { program, note, slug }",
+        "oneOf": [
+          { "$ref": "#/components/schemas/Program" },
+          { "type": "object", "properties": {
+            "program": { "$ref": "#/components/schemas/Program" },
+            "note": { "type": "string", "description": "Комментарий к версии" },
+            "slug": { "type": "string", "description": "Желаемый адрес мероприятия (латиница)" } }, "required": ["program"] }
+        ]
+      },
+      "ReportEntry": {
+        "type": "object",
+        "properties": {
+          "level": { "type": "string", "enum": ["error", "warning", "info"] },
+          "code": { "type": "string" },
+          "path": { "type": "string", "description": "Например days[0].sessions[1].items[3].start" },
+          "message": { "type": "string" },
+          "item": { "type": "string", "description": "Код элемента, например s1-3" }
+        }
+      },
+      "Report": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ReportEntry" } },
+          "warnings": { "type": "array", "items": { "$ref": "#/components/schemas/ReportEntry" } },
+          "info": { "type": "array", "items": { "$ref": "#/components/schemas/ReportEntry" } },
+          "stats": { "type": "object" }
+        }
+      },
+      "ValidateResult": {
+        "type": "object",
+        "properties": { "ok": { "type": "boolean" }, "doc": { "$ref": "#/components/schemas/Program" }, "report": { "$ref": "#/components/schemas/Report" } }
+      },
+      "EventInfo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" }, "slug": { "type": "string" }, "status": { "type": "string", "enum": ["draft", "published"] },
+          "title": { "type": "string" }, "version": { "type": "integer" }, "claimed": { "type": "boolean" }
+        }
+      },
+      "CreatedEvent": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "event": { "$ref": "#/components/schemas/EventInfo" },
+          "invite_url": { "type": "string", "description": "Отдать пользователю" },
+          "invite_expires": { "type": "string" },
+          "preview_url": { "type": "string" },
+          "draft_token": { "type": "string" },
+          "report": { "$ref": "#/components/schemas/Report" },
+          "replay": { "type": "boolean" },
+          "auto_feedback": { "type": "integer", "description": "Сколько автоматических сообщений о данных вне схемы создано" },
+          "next": { "type": "string" }
+        }
+      },
+      "EventProgram": {
+        "type": "object",
+        "properties": { "event": { "$ref": "#/components/schemas/EventInfo" }, "program": { "$ref": "#/components/schemas/Program" } }
+      },
+      "SavedProgram": {
+        "type": "object",
+        "properties": { "ok": { "type": "boolean" }, "event": { "$ref": "#/components/schemas/EventInfo" }, "report": { "$ref": "#/components/schemas/Report" } }
+      },
+      "Invite": {
+        "type": "object",
+        "properties": { "ok": { "type": "boolean" }, "invite_url": { "type": "string" }, "invite_expires": { "type": "string" }, "co_owner": { "type": "boolean" } }
+      },
+      "Feedback": {
+        "type": "object",
+        "required": ["kind", "summary"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["missing_feature", "schema_limitation", "bug", "unclear_docs", "validation_false_positive"] },
+          "area": { "type": "string", "enum": ["schema", "validate", "events", "invite", "documents", "jury", "mcp", "ui", "other"] },
+          "summary": { "type": "string", "maxLength": 300 },
+          "details": { "type": "string", "maxLength": 5000 },
+          "workaround": { "type": "string", "maxLength": 2000 },
+          "impact": { "type": "string", "enum": ["blocker", "degraded", "nice_to_have"] },
+          "model": { "type": "string" },
+          "client": { "type": "string" },
+          "event_id": { "type": "string" },
+          "context": { "type": "object" }
+        }
+      },
+      "FeedbackAnswer": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" }, "id": { "type": "string" }, "status": { "type": "string" },
+          "group": { "type": "object", "properties": { "id": { "type": "string" }, "count": { "type": "integer" } } },
+          "known_workaround": { "type": "string" }
+        }
+      }
+    }
+  }
+}
