@@ -112,10 +112,15 @@ function access(a, ev) {
   return { read: false, write: false, manage: false, via: "" };
 }
 
-/** Базовый адрес сайта для ссылок: настройка Application URL, иначе адрес запроса. */
+/**
+ * Базовый адрес сайта для ссылок: CONF_PUBLIC_URL, затем настройка Application URL
+ * (кроме значения по умолчанию http://localhost:8090), иначе адрес запроса.
+ */
 function baseUrl(e) {
+  const env = String($os.getenv("CONF_PUBLIC_URL") || "").replace(/\/+$/, "");
+  if (env) return env;
   const url = String(e.app.settings().meta.appURL || "").replace(/\/+$/, "");
-  if (url) return url;
+  if (url && url !== "http://localhost:8090") return url;
   const proto = header(e, "X-Forwarded-Proto") || "http";
   return proto + "://" + e.request.host;
 }

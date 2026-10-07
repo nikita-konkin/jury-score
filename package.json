@@ -4,15 +4,22 @@
   "private": true,
   "description": "Универсальный сервис для конференций: программа, публичная страница, документы, жюри, API для чат-ботов",
   "license": "UNLICENSED",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "node --test \"tests/unit/*.test.js\"",
     "test:api": "node --test \"tests/api/*.test.js\"",
     "test:mcp": "node --test \"mcp/test/*.test.js\"",
-    "pb": "node scripts/pb.js serve --dev",
+    "build": "node web/build.mjs",
+    "pb": "node web/build.mjs && node scripts/pb.js serve --dev",
     "pb:superuser": "node scripts/pb.js superuser upsert"
   },
   "devDependencies": {
-    "ajv": "^8.17.1"
+    "ajv": "^8.17.1",
+    "esbuild": "0.28.2"
+  },
+  "dependencies": {
+    "preact": "10.29.8"
   }
 }

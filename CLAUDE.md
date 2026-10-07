@@ -7,10 +7,12 @@
 ## Архитектура
 
 - Сервер: PocketBase 0.40 + SQLite на VPS в РФ (`conf.konkin-nikita.ru`, пока не развёрнут).
-  - `pb/pb_migrations/` — коллекции: `events`, `rooms`, `sections`, `days`, `sessions`, `items`, `program_versions`, поле `users.is_admin`.
-  - `pb/pb_hooks/api_v1.pb.js` — маршруты `/api/v1`; `pb/pb_hooks/lib/program_store.js` — документ ↔ строки коллекций, версии, права.
-- Фронтенд (план): Preact + esbuild под старые браузеры, `dist/` → `pb_public`. Сейчас `--publicDir` — `public/` (схема для ботов).
-- MCP-сервер `mcp/` (план) — обёртка над `/api/v1` для чат-ботов.
+  - `pb/pb_migrations/` — коллекции программы (`events`, `rooms`, `sections`, `days`, `sessions`, `items`, `program_versions`, `users.is_admin`) и ботов (`api_keys`, `feedback`, `feedback_groups`, токены черновика и приглашения в `events`).
+  - `pb/pb_hooks/api_v1.pb.js` — маршруты `/api/v1`. Логика — в `pb/pb_hooks/lib/`: `program_store.js` (документ ↔ строки, версии), `access.js` (ключи, токены, права, лимиты, `baseUrl`), `feedback_store.js` (группировка, ответ боту, changelog), `maintenance.js` (очистка черновиков, сводка). `cron.pb.js` — расписание, `cli.pb.js` — команды `pocketbase apikey …` и `pocketbase admin <email>`.
+  - Ссылки в ответах (`invite_url`, `preview_url`) строятся от `CONF_PUBLIC_URL`, затем от Application URL из настроек (если не по умолчанию), затем от хоста запроса.
+- Фронтенд `web/`: Preact + esbuild (`web/build.mjs`) → `dist/`, его раздаёт PocketBase (`--publicDir`). Один iife-бандл (динамического import нет в Chrome 61–62 и Firefox 60–66), бюджет 80 КБ gzip. Маршруты на хэше: `#/claim/<токен>`, `#/preview/<токен>`, `#/e/<slug>`, `#/my/<id>`, `#/new` (вставка ответа чат-бота). `web/src/gate.js` (ES5, встраивается в `<head>`) показывает «Браузер устарел» и включает класс `lite`.
+- MCP-сервер `mcp/` — обёртка над `/api/v1` (stdio и Streamable HTTP), см. `mcp/README.md`.
+- Инструкции для ботов: `public/llms.txt`, `public/openapi.json`. Правила формата в `llms.txt` должны совпадать с поведением `model.js`.
 - Центральный формат — документ программы `conf.program/v1` (`public/schema/program.v1.json`). Его используют API, импорт, экспорт, версии и шаблоны.
 
 ## shared/model.js
@@ -32,6 +34,10 @@
 - `serve` по умолчанию с automigrate: правка коллекций в дашборде или через API создаёт файл в `pb/pb_migrations`. Такой файл либо осознанно коммитить, либо удалить. Тесты запускают сервер с `--automigrate=false`.
 - Останавливать PocketBase только по PID, не `taskkill /IM pocketbase.exe`: на машине могут работать другие экземпляры.
 
+## Замер на локальной модели
+
+`node tests/bots/local_bench.mjs [--model id] [--set имя] [--save]` — материалы из `fixtures/materials/<набор>/materials.md` → LM Studio (`localhost:1234`) → JSON → `normalize` с повтором по отчёту → сравнение с `reference.json`. Результаты `--save` — в `tests/bots/results/`. Прогонять после правок схемы, `llms.txt` и проверок в `model.js`. Модель отвечает минутами — запускать в фоне.
+
 ## Правила
 
 - Интерфейс и тексты на русском.
@@ -39,6 +45,7 @@
 - Поддержка браузеров с 2018 года: iOS 12+, Chrome 61+, Firefox 60+, Edge 79+, Samsung Internet 8+, Яндекс.Браузер. В CSS нельзя `inset`, `gap` у flex, `color-mix()`, `:is()`, `:has()`, `aspect-ratio`.
 - Кнопки не меньше 44 px, без горизонтальной прокрутки, тёмная тема через `prefers-color-scheme`.
 - Внешние CDN не используются.
+- Совместимость фронтенда проверяет `tests/unit/web.test.js` (запрещённый CSS, `env()`/`max()` без запасного значения, API без полифила). Синтаксис понижает esbuild; `supported: { destructuring: true }` в `build.mjs` — сознательное исключение.
 
 ## Команды
 
@@ -49,6 +56,10 @@ export PATH="/n/tools/node:$PATH"
 npm install
 npm test                     # юнит-тесты: node --test "tests/unit/*.test.js"
 npm run test:api             # /api/v1 против временного PocketBase (пропускается без бинарника)
+npm run test:mcp             # MCP-сервер против временного PocketBase
+python tests/e2e/claim_flow.py [--shots каталог]   # Playwright: приглашение на 320 px, публикация, старый браузер
+npm run build                # dist/
 npm run pb:superuser -- admin@example.com 'пароль'   # суперпользователь в pb/pb_data
-npm run pb                   # serve --dev на 127.0.0.1:8090, дашборд /_/
+npm run pb                   # сборка и serve --dev на 127.0.0.1:8090, дашборд /_/
+node scripts/pb.js apikey create "Claude" create_events,update_own,read_own,send_feedback
 ```

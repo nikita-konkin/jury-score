@@ -428,65 +428,81 @@
 
   function computeTimes(doc, R) {
     const regs = doc.event.regulations;
-    doc.days.forEach((d, di) => d.sessions.forEach((s, si) => {
-      const sp = "days[" + di + "].sessions[" + si + "]";
-      let cursor = s.start ? toMin(s.start) : null;
-      let first = null;
-      s.items.forEach((it, ii) => {
-        const p = sp + ".items[" + ii + "]";
-        const anchor = it._start, end = it._end, dur0 = it._duration;
-        delete it._start; delete it._end; delete it._duration;
-        delete it.start; delete it.end; delete it.duration; delete it.anchor;
-        if (it.all_day) return;
+    doc.days.forEach((d, di) => {
+      // конец последнего заседания дня по залам: заседание без start продолжает предыдущее в том же зале
+      const endByRoom = {};
+      let lastEnd = null;
+      d.sessions.forEach((s, si) => {
+        const sp = "days[" + di + "].sessions[" + si + "]";
+        let cursor = s.start ? toMin(s.start) : null;
+        let first = null;
+        if (cursor == null && s.items.length && s.items[0]._start == null && !s.items[0].all_day) {
+          const prev = s.room ? endByRoom[roomKey(s.room)] : lastEnd;
+          if (prev != null) {
+            cursor = prev;
+            R.info("SESSION_CHAINED", sp + ".start", `Заседание «${s.title || "без названия"}» без времени начала — продолжает предыдущее${s.room ? " в зале " + s.room : ""} с ${fromMin(prev)}`);
+          }
+        }
+        s.items.forEach((it, ii) => {
+          const p = sp + ".items[" + ii + "]";
+          const anchor = it._start, end = it._end, dur0 = it._duration;
+          delete it._start; delete it._end; delete it._duration;
+          delete it.start; delete it.end; delete it.duration; delete it.anchor;
+          if (it.all_day) return;
 
-        let start;
-        if (anchor != null) {
-          if (cursor != null && anchor < cursor) {
-            R.error("TIME_OVERLAP", p + ".start", `${label(it)} начинается в ${fromMin(anchor)}, а предыдущий элемент заканчивается в ${fromMin(cursor)}`, { item: it.code });
-          } else if (cursor != null && anchor > cursor && ii > 0) {
-            R.info("GAP", p + ".start", `Пауза ${anchor - cursor} мин перед ${label(it)}`, { item: it.code });
+          let start;
+          if (anchor != null) {
+            if (cursor != null && anchor < cursor) {
+              R.error("TIME_OVERLAP", p + ".start", `${label(it)} начинается в ${fromMin(anchor)}, а предыдущий элемент заканчивается в ${fromMin(cursor)}`, { item: it.code });
+            } else if (cursor != null && anchor > cursor && ii > 0) {
+              R.info("GAP", p + ".start", `Пауза ${anchor - cursor} мин перед ${label(it)}`, { item: it.code });
+            }
+            start = anchor;
+          } else if (cursor != null) {
+            start = cursor;
+          } else {
+            R.error("NO_START", p, `${label(it)}: не задано время начала — укажите start у заседания или у первого элемента`, { item: it.code });
+            return;
           }
-          start = anchor;
-        } else if (cursor != null) {
-          start = cursor;
-        } else {
-          R.error("NO_START", p, `${label(it)}: не задано время начала — укажите start у заседания или у первого элемента`, { item: it.code });
-          return;
-        }
 
-        let dur;
-        if (end != null) {
-          dur = end - start;
-          if (dur <= 0) {
-            R.error("TIME_BACKWARDS", p + ".end", `${label(it)}: окончание ${fromMin(end)} не позже начала ${fromMin(start)}`, { item: it.code });
-            dur = dur0 || defaultDuration(it.type, regs);
-          } else if (dur0 && dur0 !== dur) {
-            R.warn("DURATION_MISMATCH", p + ".duration", `${label(it)}: duration ${dur0} мин не совпадает с ${fromMin(start)}–${fromMin(end)} — взято время окончания`, { item: it.code });
+          let dur;
+          if (end != null) {
+            dur = end - start;
+            if (dur <= 0) {
+              R.error("TIME_BACKWARDS", p + ".end", `${label(it)}: окончание ${fromMin(end)} не позже начала ${fromMin(start)}`, { item: it.code });
+              dur = dur0 || defaultDuration(it.type, regs);
+            } else if (dur0 && dur0 !== dur) {
+              R.warn("DURATION_MISMATCH", p + ".duration", `${label(it)}: duration ${dur0} мин не совпадает с ${fromMin(start)}–${fromMin(end)} — взято время окончания`, { item: it.code });
+            }
+          } else if (dur0) {
+            dur = dur0;
+          } else {
+            dur = defaultDuration(it.type, regs);
+            if (it.type === "activity" || it.type === "ceremony") {
+              R.warn("DEFAULT_DURATION", p + ".duration", `${label(it)}: длительность не указана — взято ${dur} мин`, { item: it.code });
+            }
           }
-        } else if (dur0) {
-          dur = dur0;
-        } else {
-          dur = defaultDuration(it.type, regs);
-          if (it.type === "activity" || it.type === "ceremony") {
-            R.warn("DEFAULT_DURATION", p + ".duration", `${label(it)}: длительность не указана — взято ${dur} мин`, { item: it.code });
+          if (start + dur > 24 * 60) {
+            R.error("PAST_MIDNIGHT", p, `${label(it)} заканчивается после полуночи`, { item: it.code });
+            dur = Math.max(1, 24 * 60 - start);
           }
+          it.start = fromMin(start);
+          it.end = fromMin(start + dur);
+          it.duration = dur;
+          it.anchor = anchor != null;
+          if (first == null) first = start;
+          cursor = start + dur;
+        });
+        if (!s.start && first != null) s.start = fromMin(first);
+        if (s.end && cursor != null && cursor > toMin(s.end)) {
+          R.warn("SESSION_OVERRUN", sp + ".end", `Заседание «${s.title || "без названия"}» должно закончиться в ${s.end}, а последний элемент заканчивается в ${fromMin(cursor)}`);
         }
-        if (start + dur > 24 * 60) {
-          R.error("PAST_MIDNIGHT", p, `${label(it)} заканчивается после полуночи`, { item: it.code });
-          dur = Math.max(1, 24 * 60 - start);
+        if (cursor != null) {
+          lastEnd = cursor;
+          if (s.room) endByRoom[roomKey(s.room)] = cursor;
         }
-        it.start = fromMin(start);
-        it.end = fromMin(start + dur);
-        it.duration = dur;
-        it.anchor = anchor != null;
-        if (first == null) first = start;
-        cursor = start + dur;
       });
-      if (!s.start && first != null) s.start = fromMin(first);
-      if (s.end && cursor != null && cursor > toMin(s.end)) {
-        R.warn("SESSION_OVERRUN", sp + ".end", `Заседание «${s.title || "без названия"}» должно закончиться в ${s.end}, а последний элемент заканчивается в ${fromMin(cursor)}`);
-      }
-    }));
+    });
   }
 
   function crossChecks(doc, R) {

@@ -229,3 +229,17 @@ test("обеду и перерыву без зала предупреждени�
   ]));
   assert.deepEqual(report.warnings.filter(w => w.code === "NO_ROOM").map(w => w.path), ["days[0].sessions[2].room"]);
 });
+
+test("заседание без start продолжает предыдущее в том же зале; в другом зале — ошибка NO_START", () => {
+  const { doc, report } = M.normalize(mini([
+    { title: "Открытие", room: "ауд. 403", start: "10:00", items: [{ type: "ceremony", title: "Открытие", duration: 15 }, { type: "break", title: "Кофе", duration: 20 }] },
+    { title: "Секция 1", room: "ауд. 403", items: [talk("Первый", "А. А. Петров"), talk("Второй", "Б. Б. Сидоров")] },
+    { title: "Параллельная", room: "ауд. 406", items: [talk("Третий", "В. В. Орлов")] },
+  ]));
+  const s1 = doc.days[0].sessions[1];
+  assert.equal(s1.start, "10:35");
+  assert.deepEqual(s1.items.map(it => it.start), ["10:35", "10:50"]);
+  assert.equal(s1.items[0].anchor, false);
+  assert.ok(report.info.some(i => i.code === "SESSION_CHAINED" && i.path === "days[0].sessions[1].start"));
+  assert.deepEqual(report.errors.map(e => e.code + " " + e.path), ["NO_START days[0].sessions[2].items[0]"]);
+});

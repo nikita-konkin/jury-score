@@ -231,6 +231,18 @@ t("обратная связь: группировка, вырезание ко�
   assert.equal(auto.json.items[0].count, 2);
   assert.match(auto.json.items[0].title, /poster_no/);
 
+  // черновик из ответа чат-бота вошедшим пользователем: он сразу владелец, без токенов и приглашения
+  const owner = { email: "paste@example.com", password: "paste-pass-123", passwordConfirm: "paste-pass-123" };
+  await api("POST", "/api/collections/users/records", owner, su);
+  const ot = await login("users", owner.email, owner.password);
+  const pasted = await api("POST", "/api/v1/events", { program: small("Из ответа бота") }, ot);
+  assert.equal(pasted.status, 201, pasted.text);
+  assert.equal(pasted.json.event.claimed, true);
+  assert.equal(pasted.json.invite_url, undefined);
+  assert.equal((await api("GET", `/api/v1/events/${pasted.json.event.id}/program`, undefined, ot)).status, 200);
+  const pfb = await api("POST", "/api/v1/feedback", { kind: "missing_feature", area: "documents", summary: "Нужен бейдж участника", source: "paste" }, ot);
+  assert.equal((await api("GET", "/api/collections/feedback/records/" + pfb.json.id, undefined, su)).json.source, "paste");
+
   // обратная связь от вошедшего пользователя, лента — только администратору
   const u = { email: "fb@example.com", password: "fb-pass-12345", passwordConfirm: "fb-pass-12345" };
   await api("POST", "/api/collections/users/records", u, su);

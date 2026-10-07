@@ -21,11 +21,25 @@ routerAdd("POST", "/api/v1/programs/validate", (e) => {
 
 // Черновик мероприятия от бота (ключ с правом create_events). Повтор с тем же Idempotency-Key
 // не создаёт дубль: возвращается то же мероприятие с новыми токенами, прежние перестают действовать.
+// Вошедший пользователь без ключа («Создать из ответа чат-бота») сразу становится владельцем черновика.
 routerAdd("POST", "/api/v1/events", (e) => {
   const A = require(`${__hooks}/lib/access.js`);
   const S = require(`${__hooks}/lib/program_store.js`);
   const FB = require(`${__hooks}/lib/feedback_store.js`);
   const a = A.actor(e);
+  if (!a.key && a.user) {
+    const body = S.readBody(e);
+    const since = new DateTime().addDate(0, 0, -1).string();
+    const mine = e.app.findRecordsByFilter("events", "owners.id ?= {:u} && created >= {:t}", "", 21, 0, { u: a.user.id, t: since });
+    if (mine.length >= 20 && !a.admin) throw new TooManyRequestsError("Не больше 20 новых мероприятий в сутки");
+    const res = S.saveProgram(e.app, {
+      program: body.program, slug: body.meta.slug, status: "draft", owners: [a.user.id],
+      source: "ui", author: a.user.id, note: body.meta.note || "из ответа чат-бота",
+    });
+    if (!res.ok) return e.json(res.status || 422, { ok: false, message: res.message || "Программа содержит ошибки и не сохранена", report: res.report });
+    FB.addExtraFeedback(e.app, res.report, { source: "auto", user: a.user.id, event: res.event.id });
+    return e.json(201, { ok: true, event: S.eventInfo(res.event), report: res.report });
+  }
   const key = A.requireKey(a, "create_events");
   const body = S.readBody(e);
   const maxKb = A.limit(key, "max_doc_kb");
