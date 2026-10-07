@@ -668,12 +668,120 @@
     return { doc: out, report: R.out(out) };
   }
 
+  const TRANSLIT = {
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e", "ж": "zh", "з": "z", "и": "i", "й": "y",
+    "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u", "ф": "f",
+    "х": "h", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "sch", "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+  };
+
+  /** Адрес мероприятия из названия: «Школа РРВ 2026» → «shkola-rrv-2026». Пустая строка, если букв нет. */
+  function slugify(s, maxLen) {
+    const out = clean(s).toLowerCase().split("").map(ch => (has(TRANSLIT, ch) ? TRANSLIT[ch] : ch)).join("")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return out.slice(0, maxLen || 48).replace(/-+$/, "");
+  }
+
+  /* ---------------- документ ↔ строки БД ---------------- */
+
+  // Поля строк по коллекциям PocketBase (порядок и состав — как в pb/pb_migrations)
+  const ROW_FIELDS = {
+    room: ["name", "building", "extra"],
+    section: ["no", "title", "short", "extra"],
+    day: ["date", "title", "extra"],
+    session: ["title", "room", "start", "end", "chair", "cochair", "secretary", "extra"],
+    item: ["type", "code", "section", "title", "authors", "speaker", "format", "org", "city", "room", "note",
+      "competitive", "all_day", "start", "end", "duration", "anchor", "extra"],
+  };
+
+  function pick(src, fields, base) {
+    const out = base || {};
+    fields.forEach(k => { if (src[k] !== undefined) out[k] = clone(src[k]); });
+    return out;
+  }
+
+  /**
+   * Разбирает нормализованный документ на строки коллекций rooms, sections, days,
+   * sessions, items. Связи — локальные ключи: sessions[].day → days[].key,
+   * items[].session → sessions[].key. Порядок — поле sort.
+   * Вызывать только для документа с report.ok === true.
+   */
+  function fromDocument(doc) {
+    const rows = { event: clone(doc.event), rooms: [], sections: [], days: [], sessions: [], items: [] };
+    (doc.rooms || []).forEach((r, i) => rows.rooms.push(pick(r, ROW_FIELDS.room, { sort: i })));
+    (doc.sections || []).forEach((s, i) => rows.sections.push(pick(s, ROW_FIELDS.section, { sort: i })));
+    doc.days.forEach((d, di) => {
+      const dk = "d" + di;
+      rows.days.push(pick(d, ROW_FIELDS.day, { key: dk, sort: di }));
+      d.sessions.forEach((s, si) => {
+        const sk = dk + ".s" + si;
+        rows.sessions.push(pick(s, ROW_FIELDS.session, { key: sk, day: dk, sort: si }));
+        s.items.forEach((it, ii) => rows.items.push(pick(it, ROW_FIELDS.item, { session: sk, sort: ii })));
+      });
+    });
+    return rows;
+  }
+
+  // Значения по умолчанию из БД («», 0, false, null, {}) считаются отсутствующими
+  const empty = v => v == null || v === "" || (Array.isArray(v) && !v.length) || (isObj(v) && !Object.keys(v).length);
+  const bySort = list => list.map((r, i) => ({ r: r, i: i }))
+    .sort((a, b) => ((+a.r.sort || 0) - (+b.r.sort || 0)) || (a.i - b.i)).map(x => x.r);
+  const rowId = r => r.id || r.key;
+
+  function copyFilled(src, fields, out, always) {
+    fields.forEach(k => {
+      const v = src[k];
+      if ((always || []).indexOf(k) >= 0) out[k] = v == null ? "" : clone(v);
+      else if (!empty(v) && v !== false && v !== 0) out[k] = clone(v);
+    });
+    return out;
+  }
+
+  /**
+   * Собирает документ conf.program/v1 из строк (обратное к fromDocument).
+   * Принимает и строки из PocketBase: связи по id или key, пустые значения
+   * полей («», 0, false, null) считаются отсутствующими, лишние поля строк
+   * (id, event, created…) игнорируются.
+   */
+  function toDocument(rows) {
+    const doc = { schema: SCHEMA_ID, event: clone(rows.event) || {}, rooms: [], sections: [], days: [] };
+    bySort(rows.rooms || []).forEach(r => doc.rooms.push(copyFilled(r, ROW_FIELDS.room, {}, ["name"])));
+    bySort(rows.sections || []).forEach(s => {
+      doc.sections.push(copyFilled(s, ["short", "extra"], { no: +s.no, title: s.title || "" }));
+    });
+    const sessionsByDay = {}, itemsBySession = {};
+    bySort(rows.sessions || []).forEach(s => { (sessionsByDay[s.day] = sessionsByDay[s.day] || []).push(s); });
+    bySort(rows.items || []).forEach(it => { (itemsBySession[it.session] = itemsBySession[it.session] || []).push(it); });
+    bySort(rows.days || []).forEach(d => {
+      const day = copyFilled(d, ["date", "title"], {}, ["date"]);
+      day.sessions = (sessionsByDay[rowId(d)] || []).map(s => {
+        const se = copyFilled(s, ["title", "room", "start", "end", "chair", "cochair", "secretary"], {}, ["title"]);
+        se.items = (itemsBySession[rowId(s)] || []).map(it => {
+          const out = copyFilled(it, ROW_FIELDS.item.filter(k => ["competitive", "anchor", "extra"].indexOf(k) < 0), {}, ["type", "title"]);
+          out.competitive = !!it.competitive;
+          if (!it.all_day && out.start) out.anchor = !!it.anchor;
+          else if (it.all_day) { delete out.start; delete out.end; delete out.duration; }
+          if (!empty(it.extra)) out.extra = clone(it.extra);
+          return out;
+        });
+        if (!empty(s.extra)) se.extra = clone(s.extra);
+        return se;
+      });
+      if (!empty(d.extra)) day.extra = clone(d.extra);
+      doc.days.push(day);
+    });
+    return doc;
+  }
+
   return {
     SCHEMA_ID: SCHEMA_ID,
     ITEM_TYPES: ITEM_TYPES,
     FORMATS: FORMATS,
     DEFAULT_REGULATIONS: DEFAULT_REGULATIONS,
+    ROW_FIELDS: ROW_FIELDS,
     normalize: normalize,
+    fromDocument: fromDocument,
+    toDocument: toDocument,
+    slugify: slugify,
     normTime: normTime,
     normDate: normDate,
     parsePerson: parsePerson,

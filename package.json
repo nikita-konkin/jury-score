@@ -6,7 +6,10 @@
   "license": "UNLICENSED",
   "engines": { "node": ">=20" },
   "scripts": {
-    "test": "node --test \"tests/unit/*.test.js\""
+    "test": "node --test \"tests/unit/*.test.js\"",
+    "test:api": "node --test \"tests/api/*.test.js\"",
+    "pb": "node scripts/pb.js serve --dev",
+    "pb:superuser": "node scripts/pb.js superuser upsert"
   },
   "devDependencies": {
     "ajv": "^8.17.1"
