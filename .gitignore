@@ -1,4 +1,10 @@
-# исходная программа конференции, сайту не нужна
+# исходные программы конференций — сайту не нужны
 *.pdf
 __pycache__/
+node_modules/
+dist/
+pb_data/
+.env
+.env.*
+*.log
 .claude/settings.local.json

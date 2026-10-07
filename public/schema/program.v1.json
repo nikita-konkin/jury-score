@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://conf.konkin-nikita.ru/schema/program.v1.json",
+  "title": "Программа мероприятия conf.program/v1",
+  "description": "Полная программа конференции или мероприятия: дни → заседания → элементы (доклады, перерывы и т. д.). Время элементов можно не указывать: сервер рассчитает его от начала заседания по регламенту (event.regulations). Явно заданный start становится якорем. Данные, которым нет места в схеме, кладите в extra соответствующего объекта — они сохранятся, а сервис узнает, каких полей не хватает.",
+  "type": "object",
+  "required": ["schema", "event", "days"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "conf.program/v1", "description": "Версия формата. Всегда «conf.program/v1»." },
+    "event": { "$ref": "#/$defs/event" },
+    "rooms": {
+      "type": "array",
+      "description": "Необязательный справочник залов. Залы, упомянутые в заседаниях и элементах, добавляются автоматически.",
+      "items": { "$ref": "#/$defs/room" }
+    },
+    "sections": {
+      "type": "array",
+      "description": "Секции конференции. Доклады ссылаются на секцию по номеру no.",
+      "items": { "$ref": "#/$defs/section" }
+    },
+    "days": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Дни мероприятия в хронологическом порядке.",
+      "items": { "$ref": "#/$defs/day" }
+    }
+  },
+  "$defs": {
+    "time": {
+      "type": "string",
+      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$|^24:00$",
+      "description": "Время ЧЧ:ММ, например «09:00»."
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "Дата ГГГГ-ММ-ДД, например «2026-10-07»."
+    },
+    "person": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Человек в виде «И. О. Фамилия». Регалии и должность — после запятой: «Н. В. Рябова, д.ф.-м.н., профессор»."
+    },
+    "extra": {
+      "type": "object",
+      "description": "Данные вне схемы. Используйте, только если для сведений нет подходящего поля, и сообщите об этом через обратную связь (send_feedback)."
+    },
+    "event": {
+      "type": "object",
+      "required": ["title", "date_from"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "description": "Название мероприятия." },
+        "subtitle": { "type": "string", "description": "Подзаголовок: полное название, номер конференции и т. п." },
+        "date_from": { "$ref": "#/$defs/date", "description": "Первый день мероприятия." },
+        "date_to": { "$ref": "#/$defs/date", "description": "Последний день мероприятия. По умолчанию — дата последнего дня в days." },
+        "city": { "type": "string", "description": "Город без «г.», например «Йошкар-Ола»." },
+        "venue": { "type": "string", "description": "Место проведения: организация, корпус." },
+        "organizer": { "type": "string", "description": "Организатор." },
+        "timezone": { "type": "string", "description": "Часовой пояс IANA. По умолчанию «Europe/Moscow»." },
+        "regulations": {
+          "type": "object",
+          "description": "Регламент в минутах: длительности по умолчанию для элементов без duration.",
+          "additionalProperties": false,
+          "properties": {
+            "talk_min": { "type": "integer", "minimum": 1, "maximum": 600, "default": 15, "description": "Секционный доклад вместе с вопросами." },
+            "plenary_min": { "type": "integer", "minimum": 1, "maximum": 600, "default": 30, "description": "Пленарный доклад или лекция." },
+            "break_min": { "type": "integer", "minimum": 1, "maximum": 600, "default": 15, "description": "Перерыв, кофе-брейк." },
+            "lunch_min": { "type": "integer", "minimum": 1, "maximum": 600, "default": 45, "description": "Обед." },
+            "other_min": { "type": "integer", "minimum": 1, "maximum": 600, "default": 30, "description": "Прочие элементы (activity, ceremony)." }
+          }
+        },
+        "jury": {
+          "type": "object",
+          "description": "Конкурс докладов с оценкой жюри.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "description": "Включена ли оценка. По умолчанию — если есть критерии." },
+            "criteria": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1 }, "description": "Критерии оценки по порядку." },
+            "scale_max": { "type": "integer", "minimum": 2, "maximum": 100, "default": 5, "description": "Максимальный балл по каждому критерию (шкала от 1)." }
+          }
+        },
+        "extra": { "$ref": "#/$defs/extra" }
+      }
+    },
+    "room": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "description": "Название зала, например «ауд. 431»." },
+        "building": { "type": "string", "description": "Корпус, адрес." },
+        "extra": { "$ref": "#/$defs/extra" }
+      }
+    },
+    "section": {
+      "type": "object",
+      "required": ["no", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "no": { "type": "integer", "minimum": 1, "description": "Номер секции." },
+        "title": { "type": "string", "minLength": 1, "description": "Полное название секции." },
+        "short": { "type": "string", "description": "Короткое название для узких экранов." },
+        "extra": { "$ref": "#/$defs/extra" }
+      }
+    },
+    "day": {
+      "type": "object",
+      "required": ["date", "sessions"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "$ref": "#/$defs/date" },
+        "title": { "type": "string", "description": "Подпись дня, например «Выездное заседание»." },
+        "sessions": { "type": "array", "items": { "$ref": "#/$defs/session" }, "description": "Заседания и блоки дня по порядку." },
+        "extra": { "$ref": "#/$defs/extra" }
+      }
+    },
+    "session": {
+      "type": "object",
+      "required": ["items"],
+      "additionalProperties": false,
+      "description": "Заседание или блок программы в одном зале: элементы идут подряд, время каждого следующего начинается с окончания предыдущего.",
+      "properties": {
+        "title": { "type": "string", "description": "Например «Заседание №1»." },
+        "room": { "type": "string", "description": "Зал заседания. Элемент может указать свой зал (например, кофе-брейк в другой аудитории)." },
+        "start": { "$ref": "#/$defs/time", "description": "Начало заседания. Нужно, если у первого элемента нет start." },
+        "end": { "$ref": "#/$defs/time", "description": "Плановое окончание: если программа выйдет за него, будет предупреждение." },
+        "chair": { "$ref": "#/$defs/person", "description": "Председатель." },
+        "cochair": { "$ref": "#/$defs/person", "description": "Сопредседатель." },
+        "secretary": { "$ref": "#/$defs/person", "description": "Учёный секретарь." },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+        "extra": { "$ref": "#/$defs/extra" }
+      }
+    },
+    "item": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "description": "Элемент программы. Для докладов обязательны title и speaker.",
+      "properties": {
+        "type": {
+          "enum": ["talk", "plenary", "break", "lunch", "activity", "ceremony"],
+          "description": "talk — секционный доклад; plenary — пленарный доклад или лекция; break — перерыв, кофе-брейк; lunch — обед; activity — прочее (деловая игра, экскурсия); ceremony — открытие, закрытие, награждение."
+        },
+        "code": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$", "description": "Короткий код. Если не указан, присваивается автоматически: s<секция>-<номер> для докладов, p<n> для пленарных, x<n> для прочего." },
+        "section": { "type": "integer", "minimum": 1, "description": "Номер секции из sections." },
+        "start": { "$ref": "#/$defs/time", "description": "Явное время начала — якорь. Обычно не нужно: время считается автоматически." },
+        "end": { "$ref": "#/$defs/time", "description": "Явное время окончания вместо duration." },
+        "duration": { "type": "integer", "minimum": 1, "maximum": 1440, "description": "Длительность в минутах. По умолчанию — из регламента по типу." },
+        "anchor": { "type": "boolean", "description": "Только в ответе сервера: true — start задан явно, false — рассчитан." },
+        "all_day": { "type": "boolean", "description": "Элемент без времени, на весь день (например «Отъезд участников»)." },
+        "title": { "type": "string", "description": "Название доклада или элемента." },
+        "authors": { "type": "array", "items": { "$ref": "#/$defs/person" }, "description": "Авторы по порядку." },
+        "speaker": { "$ref": "#/$defs/person", "description": "Докладчик — обычно один из авторов." },
+        "format": { "enum": ["oral", "online", "poster"], "description": "Форма представления: oral — очно (устный), online — дистанционно, poster — стендовый." },
+        "org": { "type": "string", "description": "Организация докладчика полностью." },
+        "city": { "type": "string", "description": "Город докладчика без «г.»." },
+        "room": { "type": "string", "description": "Зал, если отличается от зала заседания." },
+        "competitive": { "type": "boolean", "description": "Участвует ли в конкурсе докладов. По умолчанию true для talk." },
+        "note": { "type": "string", "description": "Примечание для организатора." },
+        "extra": { "$ref": "#/$defs/extra" }
+      }
+    }
+  }
+}

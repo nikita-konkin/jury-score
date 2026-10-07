@@ -1,0 +1,14 @@
+{
+  "name": "conf-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Универсальный сервис для конференций: программа, публичная страница, документы, жюри, API для чат-ботов",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test \"tests/unit/*.test.js\""
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1"
+  }
+}
