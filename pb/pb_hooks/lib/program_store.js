@@ -42,20 +42,6 @@ function findEvent(app, idOrSlug) {
   try { return app.findFirstRecordByFilter("events", "slug = {:s}", { s: idOrSlug }); } catch (err) { return null; }
 }
 
-const isUser = (auth) => !!auth && auth.collection().name === "users";
-
-/** Читать: опубликованное — все; черновик — владельцы, администратор и суперпользователь. */
-function canRead(e, ev) {
-  return ev.getString("status") === "published" || canWrite(e, ev);
-}
-
-function canWrite(e, ev) {
-  if (e.hasSuperuserAuth()) return true;
-  const auth = e.auth;
-  if (!isUser(auth)) return false;
-  return auth.getBool("is_admin") || ev.getStringSlice("owners").indexOf(auth.id) >= 0;
-}
-
 /** Документ программы из строк мероприятия. */
 function loadProgram(app, ev) {
   const rows = { event: parseJson(ev.get("info")) || {} };
@@ -77,7 +63,8 @@ function uniqueSlug(app, base) {
 /**
  * Сохраняет программу целиком и создаёт новую версию. Документ проверяется
  * заново: с ошибками (report.ok === false) не сохраняется.
- * opts: { event?: Record, program, slug?, status?, owners?: [id], source, author?: id, note? }
+ * opts: { event?: Record, program, slug?, status?, owners?: [id], source, author?: id, apiKey?: id, note?,
+ *         fields?: { поле: значение } — дополнительные поля нового мероприятия }
  * Возвращает { ok, report, event?, version? }.
  */
 function saveProgram(app, opts) {
@@ -108,6 +95,7 @@ function saveProgram(app, opts) {
       ev.set("status", opts.status === "published" ? "published" : "draft");
       ev.set("owners", opts.owners || []);
       ev.set("version", 0);
+      Object.keys(opts.fields || {}).forEach((k) => ev.set(k, opts.fields[k]));
     } else {
       // старые строки удаляются целиком; коды элементов (s1-1…) стабильны, на них ссылаются оценки жюри
       ["items", "sessions", "days", "rooms", "sections"].forEach((name) => {
@@ -144,6 +132,7 @@ function saveProgram(app, opts) {
     v.set("stats", res.report.stats);
     v.set("source", opts.source);
     if (opts.author) v.set("author", opts.author);
+    if (opts.apiKey) v.set("api_key", opts.apiKey);
     v.set("note", opts.note || "");
     tx.save(v);
     event = ev;
@@ -151,8 +140,21 @@ function saveProgram(app, opts) {
   return { ok: true, report: res.report, event: event, version: version };
 }
 
-function eventInfo(ev) {
-  return { id: ev.id, slug: ev.getString("slug"), status: ev.getString("status"), title: ev.getString("title"), version: ev.getInt("version") };
+/** Публикация и снятие с публикации — только владельцы и администратор. */
+function setStatus(e, status) {
+  const A = require(`${__hooks}/lib/access.js`);
+  const ev = findEvent(e.app, e.request.pathValue("id"));
+  const acc = ev ? A.access(A.actor(e), ev) : null;
+  if (!ev || !acc.read) throw new NotFoundError("Мероприятие не найдено");
+  if (!acc.manage) throw new ForbiddenError("Публиковать мероприятие может только владелец");
+  ev.set("status", status);
+  e.app.save(ev);
+  return e.json(200, { ok: true, event: eventInfo(ev) });
 }
 
-module.exports = { M, readBody, findEvent, canRead, canWrite, isUser, loadProgram, saveProgram, eventInfo };
+function eventInfo(ev) {
+  return { id: ev.id, slug: ev.getString("slug"), status: ev.getString("status"), title: ev.getString("title"),
+    version: ev.getInt("version"), claimed: ev.getStringSlice("owners").length > 0 };
+}
+
+module.exports = { M, MAX_BODY, readBody, findEvent, loadProgram, saveProgram, setStatus, eventInfo };

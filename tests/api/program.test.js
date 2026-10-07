@@ -1,78 +1,22 @@
 "use strict";
-// Интеграционный тест /api/v1 против настоящего PocketBase с временным pb_data.
-// Бинарник ищется как в scripts/pb.js (PB_BIN, N:\tools\pocketbase, PATH); без него тест пропускается.
+// Интеграционный тест программы в /api/v1 против настоящего PocketBase (см. pb_server.js).
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
-const net = require("node:net");
 const path = require("node:path");
-const { spawn, spawnSync } = require("node:child_process");
 const M = require("../../shared/model.js");
-const { pbBin, pbDirs } = require("../../scripts/pb.js");
 
 const fixture = name => JSON.parse(fs.readFileSync(path.join(__dirname, "../../fixtures", name), "utf8"));
-const SU = { identity: "su@example.com", password: "su-password-12345" };
-const BIN = pbBin();
-const available = spawnSync(BIN, ["--version"]).status === 0;
-
-let base, dataDir, server, suToken;
-
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const s = net.createServer();
-    s.listen(0, "127.0.0.1", () => { const p = s.address().port; s.close(() => resolve(p)); });
-    s.on("error", reject);
-  });
-}
-
-async function api(method, url, body, token) {
-  const headers = {};
-  if (token) headers.Authorization = token;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  const res = await fetch(base + url, { method, headers, body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body) });
-  const text = await res.text();
-  let json = null;
-  try { json = JSON.parse(text); } catch (e) { /* не JSON */ }
-  return { status: res.status, json, text };
-}
-
-async function login(collection, identity, password) {
-  const r = await api("POST", `/api/collections/${collection}/auth-with-password`, { identity, password });
-  assert.equal(r.status, 200, r.text);
-  return r.json.token;
-}
-
-test.before(async () => {
-  if (!available) return;
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "conf-kit-pb-"));
-  const up = spawnSync(BIN, ["superuser", "upsert", SU.identity, SU.password].concat(pbDirs(dataDir)), { encoding: "utf8" });
-  assert.equal(up.status, 0, up.stderr || up.stdout);
-  const port = await freePort();
-  base = `http://127.0.0.1:${port}`;
-  server = spawn(BIN, ["serve", "--http", `127.0.0.1:${port}`, "--automigrate=false"].concat(pbDirs(dataDir)), { stdio: ["ignore", "pipe", "pipe"] });
-  let log = "";
-  server.stdout.on("data", d => { log += d; });
-  server.stderr.on("data", d => { log += d; });
-  for (let i = 0; ; i++) {
-    try { if ((await fetch(base + "/api/health")).ok) break; } catch (e) { /* ещё стартует */ }
-    if (i > 100 || server.exitCode != null) throw new Error("PocketBase не запустился:\n" + log);
-    await new Promise(r => setTimeout(r, 100));
-  }
-  suToken = await login("_superusers", SU.identity, SU.password);
-});
-
-test.after(() => {
-  // останавливается только наш процесс (по PID), другие PocketBase на машине не трогаются
-  if (server && server.exitCode == null) server.kill();
-  if (dataDir) setTimeout(() => fs.rmSync(dataDir, { recursive: true, force: true }), 300).unref();
-});
-
-const t = (name, fn) => test(name, { skip: !available && "нет бинарника PocketBase (PB_BIN)" }, fn);
+const srv = require("./pb_server.js").setup(test);
+const { api, login, t } = srv;
+let suToken;
+test.before(async () => { await srv.ready; suToken = srv.suToken; });
 
 t("GET /api/v1 и схема из public/", async () => {
   const r = await api("GET", "/api/v1");
-  assert.deepEqual(r.json, { service: "conf-kit", api: "v1", schema: "conf.program/v1" });
+  assert.equal(r.json.service, "conf-kit");
+  assert.equal(r.json.schema, "conf.program/v1");
+  assert.equal(r.json.docs.llms, "/llms.txt");
   const s = await api("GET", "/schema/program.v1.json");
   assert.equal(s.status, 200);
   assert.equal(s.json.$id !== undefined || s.json.title !== undefined, true);
