@@ -304,6 +304,7 @@ function EventSheet({ ctx }) {
   const ev = ctx.doc.event;
   const regs = Object.assign({}, M.DEFAULT_REGULATIONS, ev.regulations || {});
   const jury = ev.jury || {};
+  const apps = ev.applications || {};
   const [form, setForm] = useState(() => {
     const f = {};
     ["title", "subtitle", "date_from", "date_to", "city", "venue", "organizer", "timezone"].forEach(k => { f[k] = ev[k] || ""; });
@@ -311,6 +312,8 @@ function EventSheet({ ctx }) {
     f.jury = !!jury.enabled || !!(jury.criteria && jury.criteria.length);
     f.criteria = (jury.criteria || []).join("\n");
     f.scale_max = String(jury.scale_max || 5);
+    f.apply = !!ev.applications && apps.enabled !== false;
+    ["deadline", "operator", "contact", "note"].forEach(k => { f["ap_" + k] = apps[k] || ""; });
     return f;
   });
   const [err, setErr] = useState("");
@@ -332,6 +335,12 @@ function EventSheet({ ctx }) {
     const criteria = form.criteria.split("\n").map(x => x.trim()).filter(Boolean);
     if (form.jury) e.jury = { enabled: true, criteria, scale_max: parseInt(form.scale_max, 10) || 5 };
     else delete e.jury;
+    if (form.apply || ev.applications) {
+      const ap = { enabled: !!form.apply };
+      ["deadline", "operator", "contact", "note"].forEach(k => { const v = form["ap_" + k].trim(); if (v) ap[k] = v; });
+      if (ap.enabled && !ap.operator && !(e.organizer || "").trim()) return setErr("Для приёма заявок укажите оператора персональных данных или организатора");
+      e.applications = ap;
+    }
     ctx.commit(next);
     ctx.close();
   }
@@ -364,6 +373,18 @@ function EventSheet({ ctx }) {
         <div>
           <Field label="Критерии" hint="По одному в строке"><textarea class="auto" rows={4} value={form.criteria} onInput={set("criteria")} /></Field>
           <Field label="Максимальный балл"><input type="number" inputmode="numeric" min="1" max="100" value={form.scale_max} onInput={set("scale_max")} /></Field>
+        </div>
+      ) : null}
+      <p class="sheet-sub">Заявки на доклады</p>
+      <Check label="Принимать заявки через сайт" checked={form.apply} onChange={set("apply")} />
+      {form.apply ? (
+        <div>
+          <Field label="Последний день приёма" hint="Пусто — без срока"><input type="date" value={form.ap_deadline} onInput={set("ap_deadline")} /></Field>
+          <Field label="Оператор персональных данных" hint="Организация и адрес для согласия участника. Пусто — организатор">
+            <input value={form.ap_operator} onInput={set("ap_operator")} placeholder={form.organizer || ""} />
+          </Field>
+          <Field label="Контакт для отзыва согласия" hint="E-mail оргкомитета"><input type="email" value={form.ap_contact} onInput={set("ap_contact")} /></Field>
+          <Field label="Текст над формой" hint="Требования к докладам, сроки, взнос"><textarea class="auto" rows={3} value={form.ap_note} onInput={set("ap_note")} /></Field>
         </div>
       ) : null}
       <p class="err">{err}</p>

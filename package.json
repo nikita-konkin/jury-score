@@ -11,7 +11,7 @@
     "test": "node --test \"tests/unit/*.test.js\"",
     "test:api": "node --test \"tests/api/*.test.js\"",
     "test:mcp": "node --test \"mcp/test/*.test.js\"",
-    "test:e2e": "python tests/e2e/claim_flow.py && python tests/e2e/editor_flow.py && python tests/e2e/public_flow.py && python tests/e2e/print_flow.py && python tests/e2e/jury_flow.py",
+    "test:e2e": "python tests/e2e/claim_flow.py && python tests/e2e/editor_flow.py && python tests/e2e/public_flow.py && python tests/e2e/print_flow.py && python tests/e2e/jury_flow.py && python tests/e2e/apply_flow.py",
     "build": "node web/build.mjs",
     "pb": "node web/build.mjs && node scripts/pb.js serve --dev",
     "pb:superuser": "node scripts/pb.js superuser upsert"

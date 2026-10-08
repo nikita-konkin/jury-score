@@ -80,6 +80,7 @@ export function View({ url, preview, toast }) {
         {preview ? null : (
           <div>
             <div class="actions">
+              {applyOpen(program.event, ev.slug) ? <a class="btn primary" href={"#/apply/" + ev.slug}>Подать заявку на доклад</a> : null}
               <button class="btn" onClick={share}>Поделиться</button>
               <a class="btn" href={"webcal://" + location.host + icsPath}>В календарь</a>
             </div>
@@ -174,3 +175,10 @@ function Results({ list, program, now, action }) {
   );
 }
 
+
+/** Открыт ли приём заявок (точную проверку делает сервер на странице формы). */
+function applyOpen(info, slug) {
+  const ap = info.applications;
+  if (!ap || ap.enabled === false || !slug) return false;
+  return !ap.deadline || nowIn(info.timezone).date <= ap.deadline;
+}

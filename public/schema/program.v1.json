@@ -81,6 +81,18 @@
             "scale_max": { "type": "integer", "minimum": 2, "maximum": 100, "default": 5, "description": "Максимальный балл по каждому критерию (шкала от 1)." }
           }
         },
+        "applications": {
+          "type": "object",
+          "description": "Приём заявок на доклады через форму на сайте. Контакты участников в программу не попадают.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": true, "description": "Открыт ли приём заявок." },
+            "deadline": { "$ref": "#/$defs/date", "description": "Последний день приёма заявок (включительно, по часовому поясу мероприятия)." },
+            "operator": { "type": "string", "maxLength": 300, "description": "Оператор персональных данных для согласия — организация с адресом. По умолчанию organizer." },
+            "contact": { "type": "string", "maxLength": 300, "description": "E-mail или адрес для вопросов и отзыва согласия на обработку персональных данных." },
+            "note": { "type": "string", "maxLength": 2000, "description": "Текст над формой: требования к докладам, сроки, взнос." }
+          }
+        },
         "extra": { "$ref": "#/$defs/extra" }
       }
     },

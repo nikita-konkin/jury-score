@@ -190,4 +190,4 @@ function findVersion(app, ev, no) {
   }
 }
 
-module.exports = { M, MAX_BODY, readBody, findEvent, loadProgram, saveProgram, setStatus, eventInfo, listVersions, findVersion };
+module.exports = { M, MAX_BODY, parseJson, readBody, findEvent, loadProgram, saveProgram, setStatus, eventInfo, listVersions, findVersion };

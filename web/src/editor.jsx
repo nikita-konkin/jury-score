@@ -3,5 +3,6 @@
 import { Editor } from "./pages/Editor.jsx";
 import { Create } from "./pages/Create.jsx";
 import { Print } from "./print/Print.jsx";
+import { Applications } from "./pages/Applications.jsx";
 
-window.ConfEditor = { Editor, Create, Print };
+window.ConfEditor = { Editor, Create, Print, Applications };

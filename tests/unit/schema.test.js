@@ -35,4 +35,8 @@ test("типы и форматы в схеме совпадают с model.js", 
   assert.deepEqual(s.$defs.item.properties.type.enum, M.ITEM_TYPES);
   assert.deepEqual(s.$defs.item.properties.format.enum, M.FORMATS);
   assert.equal(s.properties.schema.const, M.SCHEMA_ID);
+  // поля мероприятия и вложенных настроек совпадают с KEYS в model.js
+  const ev = s.$defs.event.properties;
+  assert.deepEqual(Object.keys(ev).sort(), M.KEYS.event.slice().sort());
+  ["regulations", "jury", "applications"].forEach(k => assert.deepEqual(Object.keys(ev[k].properties).sort(), M.KEYS[k].slice().sort(), k));
 });

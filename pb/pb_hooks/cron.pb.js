@@ -11,3 +11,9 @@ cronAdd("conf_cleanup_drafts", "30 3 * * *", () => {
 cronAdd("conf_feedback_digest", "0 8 * * *", () => {
   require(`${__hooks}/lib/maintenance.js`).feedbackDigest($app);
 });
+
+// Контакты из заявок через год после мероприятия (срок согласия на обработку персональных данных)
+cronAdd("conf_purge_contacts", "45 3 * * *", () => {
+  const n = require(`${__hooks}/lib/apply_store.js`).purgeContacts($app, 365);
+  if (n) console.log(`conf-kit: стёрты контакты в заявках: ${n}`);
+});

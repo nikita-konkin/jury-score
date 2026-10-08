@@ -68,6 +68,7 @@ export function MyEvent({ id, toast }) {
         </div>
         {invite ? <p class="muted break">Ссылка для соавтора (14 дней, одноразовая): {invite}</p> : null}
       </div>
+      <AppsPanel event={event} program={program} />
       <JuryPanel event={event} toast={toast} />
       <Program program={program} />
       {versions.data && versions.data.length ? (
@@ -133,5 +134,22 @@ function JuryPanel({ event, toast }) {
         <button class="btn" disabled={busy} onClick={() => reset("admin")}>Новый код администратора</button>
       </div>
     </details>
+  );
+}
+
+/** Заявки на доклады: сколько новых, переход к модерации. */
+function AppsPanel({ event, program }) {
+  const apps = useLoad(async () => {
+    const r = await api("GET", `/api/v1/events/${event.id}/applications`);
+    return r.status === 200 ? r.json : null;
+  }, [event.id, event.version]);
+  const d = apps.data;
+  if (!d || (!program.event.applications && !d.applications.length)) return null;
+  const fresh = d.applications.filter(a => a.status === "new").length;
+  return (
+    <a class="card btn-card" href={"#/applications/" + event.id}>
+      <b>Заявки на доклады: {d.applications.length}{fresh ? `, новых ${fresh}` : ""}</b>
+      <span class="muted small">{d.open ? "Приём открыт" + (d.deadline ? " до " + d.deadline.split("-").reverse().join(".") : "") : d.reason}</span>
+    </a>
   );
 }

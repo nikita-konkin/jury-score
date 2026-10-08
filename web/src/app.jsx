@@ -13,6 +13,7 @@ import { MyEvent } from "./pages/MyEvent.jsx";
 import { FromJson } from "./pages/FromJson.jsx";
 import { View } from "./pages/View.jsx";
 import { Jury } from "./pages/Jury.jsx";
+import { Apply } from "./pages/Apply.jsx";
 
 const { render } = preact;
 const { useState, useEffect } = preactHooks;
@@ -57,6 +58,8 @@ function Page({ route, toast, refresh }) {
   if ((m = /^\/claim\/([\w-]+)$/.exec(route))) return <Claim token={m[1]} toast={toast} />;
   if ((m = /^\/preview\/([\w-]+)$/.exec(route))) return <View url={"/api/v1/preview/" + m[1]} preview toast={toast} />;
   if ((m = /^\/e\/([\w-]+)$/.exec(route))) return <View key={m[1]} url={`/api/v1/events/${m[1]}/program`} toast={toast} />;
+  if ((m = /^\/apply\/([\w-]+)(?:\/(ap_[A-Za-z0-9]+))?$/.exec(route))) return <Apply key={"a" + route} slug={m[1]} token={m[2] || ""} toast={toast} />;
+  if ((m = /^\/applications\/(\w+)$/.exec(route))) return <Lazy key={"ap" + m[1]} name="Applications" props={{ id: m[1], toast }} />;
   if ((m = /^\/jury\/([\w-]+)(?:\/([\w-]+))?$/.exec(route))) return <Jury key={"j" + m[1]} slug={m[1]} code={m[2] || ""} toast={toast} />;
   if ((m = /^\/my\/(\w+)$/.exec(route))) return <MyEvent id={m[1]} toast={toast} />;
   if ((m = /^\/edit\/(\w+)(\/.*)?$/.exec(route))) return <Lazy key={"e" + m[1]} name="Editor" props={{ id: m[1], sub: m[2] || "", toast }} />;

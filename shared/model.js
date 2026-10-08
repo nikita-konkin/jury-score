@@ -39,9 +39,10 @@
   // Известные поля на каждом уровне. Остальные переносятся в extra с предупреждением.
   const KEYS = {
     root: ["schema", "event", "rooms", "sections", "days"],
-    event: ["title", "subtitle", "date_from", "date_to", "city", "venue", "organizer", "timezone", "regulations", "jury", "extra"],
+    event: ["title", "subtitle", "date_from", "date_to", "city", "venue", "organizer", "timezone", "regulations", "jury", "applications", "extra"],
     regulations: ["talk_min", "plenary_min", "break_min", "lunch_min", "other_min"],
     jury: ["enabled", "criteria", "scale_max"],
+    applications: ["enabled", "deadline", "operator", "contact", "note"],
     section: ["no", "title", "short", "extra"],
     room: ["name", "building", "extra"],
     day: ["date", "title", "sessions", "extra"],
@@ -234,6 +235,23 @@
         scale = DEFAULT_SCALE_MAX;
       }
       ev.jury = { enabled: j.enabled == null ? criteria.length > 0 : !!j.enabled, criteria: criteria, scale_max: scale };
+    }
+
+    // приём заявок: срок, оператор персональных данных для согласия, контакт для отзыва согласия
+    if (src.applications != null) {
+      const a = isObj(src.applications) ? src.applications : {};
+      const ap = { enabled: a.enabled == null ? true : !!a.enabled };
+      if (a.deadline != null && a.deadline !== "") {
+        const d = normDate(a.deadline);
+        if (!d) R.error("BAD_DATE", p + ".applications.deadline", `Неверная дата окончания приёма заявок «${clean(a.deadline)}», нужен формат ГГГГ-ММ-ДД`);
+        else ap.deadline = d;
+      }
+      ["operator", "contact"].forEach(k => { if (clean(a[k])) ap[k] = clean(a[k]).slice(0, 300); });
+      if (clean(a.note)) ap.note = String(a.note).replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 2000);
+      if (ap.enabled && !ap.operator && !ev.organizer) {
+        R.warn("APPLICATIONS_NO_OPERATOR", p + ".applications.operator", "Не указан оператор персональных данных (организатор): без него форма заявки не откроется");
+      }
+      ev.applications = ap;
     }
     moveUnknown(src, KEYS.event, ev, p, R);
     return ev;
@@ -798,6 +816,7 @@
     SCHEMA_ID: SCHEMA_ID,
     ITEM_TYPES: ITEM_TYPES,
     FORMATS: FORMATS,
+    KEYS: KEYS,
     DEFAULT_REGULATIONS: DEFAULT_REGULATIONS,
     ROW_FIELDS: ROW_FIELDS,
     normalize: normalize,
