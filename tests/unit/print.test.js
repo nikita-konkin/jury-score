@@ -68,3 +68,25 @@ test("Word: пакет открывается, протокол читается
   const amp = strFromU8(unzipSync(X.docx([{ p: "A & B <c>" }]))["word/document.xml"]);
   assert.ok(amp.indexOf("A &amp; B &lt;c&gt;") > 0);
 });
+
+test("итоги конкурса и дипломы: места внутри секции, общее место при равенстве, без секции — отдельной группой", async () => {
+  const D = await data();
+  const R = await import("../../web/src/jury/results.js");
+  const talks = [
+    { code: "s1-1", title: "А", speaker: "А. А. Ан, к.т.н.", section: 1, idx: 0 },
+    { code: "s1-2", title: "Б", speaker: "Б. Б. Бе", section: 1, idx: 1 },
+    { code: "s1-3", title: "В", speaker: "В. В. Ве", section: 1, idx: 2 },
+    { code: "s1-4", title: "Г", speaker: "Г. Г. Ге", section: 1, idx: 3 },
+    { code: "s2-1", title: "Д", speaker: "Д. Д. Де", section: 2, idx: 4 },
+    { code: "x1", title: "Е", speaker: "Е. Е. Ее", idx: 5 },
+  ];
+  const all = { j: { name: "J", data: {} } };
+  [["s1-1", 3], ["s1-2", 5], ["s1-3", 5], ["s1-4", 2], ["s2-1", 1], ["x1", 4]].forEach(([id, v]) => { all.j.data[id] = { s: [v, v], ts: 1 }; });
+  const rows = R.computeResults(all, talks, 2, 5);
+  const groups = D.contest(rows, [{ no: 1, title: "Радио" }, { no: 2, title: "" }, { no: 3, title: "Пустая" }], R.rankRows);
+  assert.deepEqual(groups.map(g => g.title), ["Секция 1. Радио", "Секция 2", "Без секции"]);
+  assert.deepEqual(groups[0].rows.map(r => [r.t.code, r.rank]), [["s1-2", 1], ["s1-3", 1], ["s1-1", 3], ["s1-4", 4]]);
+  const dip = D.diplomas(groups);
+  assert.deepEqual(dip.map(d => [d.name, d.degree]), [["Б. Б. Бе", "I"], ["В. В. Ве", "I"], ["А. А. Ан", "III"], ["Д. Д. Де", "I"], ["Е. Е. Ее", "I"]]);
+  assert.equal(D.contest(rows, [], R.rankRows)[0].title, "", "без секций — один список без заголовка");
+});

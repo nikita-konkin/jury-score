@@ -1,10 +1,12 @@
-// Печатные документы (#/print/<id>/<вид>): программа, таблички «на дверь», протоколы секций, сертификаты.
+// Печатные документы (#/print/<id>/<вид>): программа, таблички «на дверь», протоколы секций, сертификаты,
+// итоги конкурса докладов и дипломы (оценки жюри видит только владелец).
 // На экране — лист A4 в масштабе ширины телефона; «Печать / PDF» — печать браузера с @page, «Word» — .docx.
 import { useState, useEffect, useRef } from "preact/hooks";
 import { api, errorText, user } from "../api.js";
 import { useLoad, go } from "../hooks.js";
 import { download } from "../util.js";
-import { programRows, protocols, doors, certificates, datesLine, dayHeading } from "./data.js";
+import { programRows, protocols, doors, certificates, contest, diplomas, nameOnly, datesLine, dayHeading } from "./data.js";
+import { groupRows, computeResults, rankRows } from "../jury/results.js";
 import { docx, programBlocks, protocolBlocks } from "./docx.js";
 
 const KINDS = [
@@ -12,7 +14,26 @@ const KINDS = [
   ["doors", "На дверь", true],
   ["protocols", "Протоколы", false],
   ["certificates", "Сертификаты", true],
+  ["results", "Итоги", false],
+  ["diplomas", "Дипломы", true],
 ];
+const JURY_ERR = {
+  jury_disabled: "Конкурс докладов выключен: задайте критерии жюри в настройках мероприятия",
+  bad_code: "Итоги конкурса видит только владелец мероприятия",
+};
+
+/** Оценки жюри для итогов и дипломов: ping (доклады, критерии) + all (все оценки). */
+async function loadJury(id) {
+  const q = a => api("GET", `/api/jury/${encodeURIComponent(id)}?action=${a}`).then(r => r.json || {});
+  const ping = await q("ping");
+  if (!ping.ok || ping.role !== "admin") throw new Error(JURY_ERR[ping.error] || JURY_ERR.bad_code);
+  const all = await q("all");
+  if (!all.ok) throw new Error(JURY_ERR[all.error] || "Не удалось загрузить оценки");
+  const talks = ping.talks.map((t, i) => Object.assign({ idx: i }, t));
+  const nc = ping.criteria.length;
+  const rows = computeResults(groupRows(all.rows, talks, nc, ping.scaleMax), talks, nc, ping.scaleMax);
+  return { groups: contest(rows, ping.sections, rankRows), talks, rated: rows.length, maxTotal: nc * ping.scaleMax };
+}
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 export function Print({ id, kind, toast }) {
@@ -21,6 +42,8 @@ export function Print({ id, kind, toast }) {
     if (r.status !== 200) throw new Error(r.status === 404 ? "Мероприятие не найдено или нет доступа" : errorText(r));
     return r.json;
   }, [id]);
+  const juryKind = kind === "results" || kind === "diplomas";
+  const jury = useLoad(() => (juryKind ? loadJury(id) : null), [id, juryKind]);
   const [day, setDay] = useState("");
   const wrap = useRef(null);
   const inner = useRef(null);
@@ -57,6 +80,11 @@ export function Print({ id, kind, toast }) {
   if (k[0] === "doors") body = <Doors list={doors(program, day)} />;
   else if (k[0] === "protocols") body = <Protocols list={protocols(program, day)} program={program} />;
   else if (k[0] === "certificates") body = <Certificates list={certificates(program, day)} program={program} />;
+  else if (juryKind) {
+    body = jury.loading ? <div class="pd-page"><p>Загрузка оценок…</p></div>
+      : jury.error ? <div class="pd-page"><p>{jury.error}</p></div>
+      : k[0] === "results" ? <Results data={jury.data} program={program} /> : <Diplomas list={diplomas(jury.data.groups)} program={program} />;
+  }
   else body = <ProgramDoc program={program} />;
 
   return (
@@ -69,7 +97,7 @@ export function Print({ id, kind, toast }) {
             <button key={v} role="tab" aria-selected={v === k[0]} class={v === k[0] ? "on" : ""} onClick={() => go(`/print/${id}/${v}`)}>{label}</button>
           ))}
         </div>
-        {k[0] !== "program" && program.days.length > 1 ? (
+        {k[0] !== "program" && !juryKind && program.days.length > 1 ? (
           <label class="field"><span>День</span>
             <select value={day} onChange={e => setDay(e.currentTarget.value)}>
               <option value="">все дни</option>
@@ -191,6 +219,64 @@ function Certificates({ list, program }) {
       <p class="pd-cert-title">«{c.title}»</p>
       <p class="pd-cert-when">{[datesLine(ev.date_from, ev.date_to), ev.city ? "г. " + ev.city.replace(/^г\.\s*/, "") : ""].filter(Boolean).join(", ")}</p>
       <p class="pd-sign">Председатель оргкомитета ____________________</p>
+    </div>
+  ));
+}
+
+const num = x => String(Math.round(x * 100) / 100).replace(".", ",");
+const PLACE = ["", "первое", "второе", "третье"];
+
+function Results({ data, program }) {
+  const ev = program.event;
+  return (
+    <div class="pd-flow pd-results">
+      <header class="pd-title">
+        <h1>Итоги конкурса докладов</h1>
+        <p>{ev.title}</p>
+        <p>{[datesLine(ev.date_from, ev.date_to), ev.city ? "г. " + ev.city.replace(/^г\.\s*/, "") : ""].filter(Boolean).join(", ")}</p>
+      </header>
+      {data.groups.length ? data.groups.map((g, gi) => (
+        <section key={gi}>
+          {g.title ? <h3>{g.title}</h3> : null}
+          <table class="pd-table">
+            <thead><tr><th>Место</th><th>Докладчик</th><th>Тема доклада</th><th>Средний балл</th><th>Экспертов</th></tr></thead>
+            <tbody>
+              {g.rows.map(r => (
+                <tr key={r.t.code}>
+                  <td class="pd-center">{r.rank}</td>
+                  <td>{nameOnly(r.t.speaker)}{r.t.org ? <span class="pd-org"><br />{r.t.org}</span> : null}</td>
+                  <td>{r.t.title}</td>
+                  <td class="pd-center">{num(r.avg)}</td>
+                  <td class="pd-center">{r.n}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )) : <p>Пока нет засчитанных оценок.</p>}
+      <p class="pd-note">Средний суммарный балл экспертов, максимум {data.maxTotal}. Учитываются только полностью заполненные оценки.
+        {data.talks.length > data.rated ? ` Без засчитанных оценок: ${data.talks.length - data.rated} из ${data.talks.length} докладов.` : ""}</p>
+      <p class="pd-sign">Председатель жюри ____________________</p>
+      <p class="pd-sign">Секретарь ____________________</p>
+    </div>
+  );
+}
+
+function Diplomas({ list, program }) {
+  const ev = program.event;
+  if (!list.length) return <div class="pd-page"><p>Пока нет призовых мест: дипломы появятся после оценок жюри.</p></div>;
+  return list.map((d, i) => (
+    <div key={i} class="pd-page pd-cert pd-diploma">
+      <p class="pd-cert-event">{ev.title}</p>
+      <h1>ДИПЛОМ</h1>
+      <p class="pd-cert-sub">{d.degree} степени</p>
+      <p>награждается</p>
+      <p class="pd-cert-name">{d.name}</p>
+      <p>за {PLACE[d.rank]} место в конкурсе докладов</p>
+      <p class="pd-cert-title">«{d.title}»</p>
+      {d.group ? <p class="pd-cert-group">{d.group}</p> : null}
+      <p class="pd-cert-when">{[datesLine(ev.date_from, ev.date_to), ev.city ? "г. " + ev.city.replace(/^г\.\s*/, "") : ""].filter(Boolean).join(", ")}</p>
+      <p class="pd-sign">Председатель жюри ____________________</p>
     </div>
   ));
 }

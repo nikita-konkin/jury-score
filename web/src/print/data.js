@@ -144,3 +144,26 @@ export function certificates(doc, dayFilter) {
   });
   return out;
 }
+
+const ROMAN = ["", "I", "II", "III"];
+
+/**
+ * Итоги конкурса по секциям (без секций — одним списком). rows — computeResults из jury/results.js,
+ * rank — место внутри группы (одинаковые средние — одно место).
+ */
+export function contest(rows, sections, rankRows) {
+  const secs = (sections || []).filter(s => rows.some(r => r.t.section === s.no));
+  const groups = secs.map(s => ({ title: `Секция ${s.no}. ${s.title || ""}`.replace(/\.\s*$/, ""), rows: rankRows(rows.filter(r => r.t.section === s.no)) }));
+  const rest = rows.filter(r => !secs.some(s => s.no === r.t.section));
+  if (rest.length) groups.push({ title: secs.length ? "Без секции" : "", rows: rankRows(rest) });
+  return groups;
+}
+
+/** Дипломы I–III степени: призовые места каждой группы итогов. */
+export function diplomas(groups, maxPlace) {
+  const out = [];
+  groups.forEach(g => g.rows.forEach(r => {
+    if (r.rank <= (maxPlace || 3)) out.push({ degree: ROMAN[r.rank], rank: r.rank, name: nameOnly(r.t.speaker), title: r.t.title, group: g.title });
+  }));
+  return out;
+}

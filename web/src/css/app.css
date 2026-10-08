@@ -392,6 +392,119 @@ pre.extra { margin: 0; padding: 10px; border-radius: 12px; background: var(--chi
 .pd-cert-event { font-size: 13pt; text-transform: uppercase; }
 .pd-cert-when { margin-top: 4mm !important; }
 .pd-cert .pd-sign { margin-top: 14mm !important; }
+.pd-cert-group { font-size: 12pt; margin: 0 20mm !important; }
+.pd-results h3 { font-size: 12pt; margin: 5mm 0 0; page-break-after: avoid; break-after: avoid; }
+.pd-results .pd-table { margin: 2mm 0 4mm; }
+.pd-org { font-size: 9pt; }
+.pd-note { font-size: 10pt; margin-top: 4mm !important; }
+
+/* жюри (#/jury/…): перенос jury-score; у flex вместо gap — отступы */
+.jury-login { max-width: 420px; }
+.jury-head { padding: 12px 14px; }
+.jury-head .row-between { margin: 0; }
+.jury-who { min-width: 0; margin-right: 8px; line-height: 1.2; }
+.jury-who b, .jury-who span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jury-who span { font-size: 12px; }
+.jury-prog { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.jury-prog > span:first-child { font-variant-numeric: tabular-nums; white-space: nowrap; margin-right: 8px; }
+.sync { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sync.ok { color: var(--ok); }
+.sync.err { color: var(--err); font-weight: 600; }
+.meter { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 6px; }
+.meter i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+.jury-secs button { white-space: nowrap; padding: 0 10px; }
+.jury-sech { margin: 18px 6px 10px; font-size: 15px; font-weight: 650; line-height: 1.3; }
+.jury-sech span { display: block; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 2px; }
+.jury-note { margin: 0 6px 12px; }
+
+.jcard { background: var(--card); border: 1px solid var(--stroke); border-radius: 22px; margin-bottom: 10px; box-shadow: inset 0 1px 0 var(--hi), var(--shadow); }
+.lite .jcard, .jcard.open { background: var(--card-solid); }
+.jsum {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-gap: 10px; gap: 10px; align-items: start;
+  width: 100%; min-height: 64px; padding: 12px; border: 0; background: none; text-align: left; border-radius: 22px;
+}
+.jwhen {
+  font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 10px; background: var(--chip); border: 1px solid var(--line);
+  font-variant-numeric: tabular-nums; white-space: nowrap; margin-top: 1px;
+}
+.jmain { min-width: 0; display: block; }
+.jttl { display: block; font-weight: 600; line-height: 1.3; overflow-wrap: break-word; word-wrap: break-word; }
+.jwho { display: block; font-size: 13px; color: var(--muted); margin-top: 3px; }
+.jside { display: block; text-align: right; }
+.jscore {
+  display: inline-block; min-width: 54px; height: 30px; line-height: 28px; padding: 0 10px; border-radius: 999px; text-align: center;
+  font-weight: 700; white-space: nowrap; background: var(--chip); border: 1px solid var(--line); color: var(--faint); font-variant-numeric: tabular-nums;
+}
+.jscore small { font-size: 11px; font-weight: 600; opacity: .75; }
+.jcard.done .jscore { color: #fff; border-color: transparent; background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+.jcard.part .jscore { color: var(--warn); background: var(--warn-bg); border-color: transparent; }
+.jcard.flagged .jscore { color: var(--muted); font-size: 12px; }
+.jsv { display: block; font-size: 11px; white-space: nowrap; color: var(--muted); margin-top: 4px; min-height: 14px; }
+.jsv.saved { color: var(--ok); }
+.jsv.error { color: var(--err); font-weight: 600; }
+.jbody { padding: 0 12px 14px; }
+.jmeta { font-size: 13px; color: var(--muted); padding: 10px 12px; border-radius: 14px; background: var(--chip); overflow-wrap: break-word; word-wrap: break-word; }
+.jmeta b { color: var(--fg); font-weight: 600; }
+.jcrit { margin-top: 14px; }
+.jcl { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; font-weight: 600; margin: 0 2px 7px; }
+.jcl b { color: var(--accent); font-variant-numeric: tabular-nums; margin-left: 8px; }
+.jpts { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); grid-gap: 8px; gap: 8px; }
+.jpt {
+  height: 48px; border-radius: 15px; border: 1px solid var(--line); background: var(--chip); font-weight: 700; font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.jpt[aria-pressed="true"] { color: #fff; border-color: transparent; background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+.jcard.flagged .jpts { opacity: .4; }
+.jflags, .jfoot { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 8px; gap: 8px; margin-top: 16px; }
+.jfoot { margin-top: 10px; }
+.jfoot .btn { padding-left: 6px; padding-right: 6px; white-space: nowrap; }
+.jflag { min-height: 44px; border-radius: 14px; border: 1px solid var(--line); background: var(--chip); font-size: 13px; font-weight: 600; color: var(--muted); padding: 6px 8px; }
+.jflag[aria-pressed="true"] { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.jcomment {
+  display: block; width: 100%; min-height: 68px; margin-top: 10px; border-radius: 14px; border: 1px solid var(--line); background: var(--field);
+  padding: 10px 12px; font-size: 16px; resize: vertical; outline: none;
+}
+.jcomment:focus { border-color: var(--accent); }
+
+.jrank {
+  display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; grid-gap: 4px 10px; gap: 4px 10px; align-items: start;
+  padding: 12px; margin-bottom: 10px;
+}
+.jplace { width: 36px; height: 36px; line-height: 34px; border-radius: 50%; text-align: center; font-weight: 800; background: var(--chip); border: 1px solid var(--line); }
+.p1 .jplace { background: linear-gradient(135deg, #ffe07a, #f2a51f); color: #4a3000; border-color: transparent; }
+.p2 .jplace { background: linear-gradient(135deg, #eef2f7, #a9b4c4); color: #28303c; border-color: transparent; }
+.p3 .jplace { background: linear-gradient(135deg, #f6c39c, #c2794a); color: #3d1d08; border-color: transparent; }
+.jrmain { min-width: 0; }
+.jrmain b { display: block; font-weight: 600; line-height: 1.3; overflow-wrap: break-word; word-wrap: break-word; }
+.jrmain span { display: block; font-size: 12px; margin-top: 3px; }
+.javg { text-align: right; white-space: nowrap; }
+.javg b { display: block; font-size: 21px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.javg span { font-size: 11px; color: var(--muted); }
+.jdet { grid-column: 1 / -1; font-size: 13px; }
+.jdet summary, .jbox summary { min-height: 44px; display: flex; align-items: center; font-weight: 600; color: var(--accent); cursor: pointer; }
+.jdet dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-gap: 4px 12px; gap: 4px 12px; margin: 2px 0 8px; }
+.jdet dt { color: var(--muted); overflow-wrap: break-word; word-wrap: break-word; }
+.jdet dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.jbox { padding: 4px 14px 8px; }
+.jbox h3 { margin: 12px 0 4px; font-size: 14px; font-weight: 700; }
+.jbox ul { list-style: none; margin: 0; padding: 0; }
+.jbox li { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.jbox li > span { min-width: 0; overflow-wrap: break-word; word-wrap: break-word; }
+.jbox li > b { white-space: nowrap; font-variant-numeric: tabular-nums; margin-left: 12px; }
+.jbox li small { display: block; color: var(--muted); font-size: 12px; }
+.jbox li.jrow { align-items: center; }
+.jbox li.jrow .btn { margin-left: 12px; flex: 0 0 auto; }
+.jbox li.jst { display: block; }
+.jstl { display: flex; justify-content: space-between; align-items: baseline; }
+.jstl b { white-space: nowrap; font-variant-numeric: tabular-nums; margin-left: 12px; }
+.jtiles { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 10px; gap: 10px; margin-bottom: 12px; }
+.jtile { margin: 0; padding: 12px 14px; }
+.jtile b { display: block; font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.jtile b small { font-size: 14px; font-weight: 600; color: var(--muted); }
+.jtile span { font-size: 12px; color: var(--muted); }
+.jury-codes { margin: 8px 0 0; }
+.jury-codes div { display: flex; justify-content: space-between; align-items: center; min-height: 44px; border-top: 1px solid var(--line); }
+.jury-codes code { font-size: 17px; font-weight: 700; letter-spacing: .04em; margin-left: 8px; }
 
 @media print {
   html, body { background: #fff !important; }

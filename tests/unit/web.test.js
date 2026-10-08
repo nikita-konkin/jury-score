@@ -48,7 +48,7 @@ test("CSS: нет свойств, которых нет в Safari 12 и Chrome 6
       // env() и max() — только после запасного значения того же свойства
       const decls = body.split(";").map(d => d.trim()).filter(Boolean);
       decls.forEach((d, i) => {
-        if (!/env\(|max\(|min\(|clamp\(/.test(d)) return;
+        if (!/env\(|\bmax\(|\bmin\(|clamp\(/.test(d)) return; // minmax() у grid поддерживается
         const prop = d.split(":")[0].trim();
         assert.ok(decls.slice(0, i).some(x => x.split(":")[0].trim() === prop), `«${sel.trim()}»: ${prop} без запасного значения перед env()/max()`);
       });
