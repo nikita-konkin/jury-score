@@ -248,3 +248,32 @@ export function rowsToItems(rows, mapping, opts) {
   });
   return items;
 }
+
+/* ---------------- текст для обработки моделью ---------------- */
+
+/** Текст .docx по порядку: абзацы — строками, строки таблиц — ячейками через « | ». */
+export function docxText(files) {
+  const xml = files["word/document.xml"] ? strFromU8(files["word/document.xml"]) : "";
+  const out = [];
+  xml.replace(/<w:tbl>[\s\S]*?<\/w:tbl>|<w:p\b[^>]*\/>|<w:p\b[\s\S]*?<\/w:p>/g, m => {
+    if (m.indexOf("<w:tbl>") === 0) {
+      m.replace(/<w:tr\b[\s\S]*?<\/w:tr>/g, tr => {
+        const cells = [];
+        tr.replace(/<w:tc\b[\s\S]*?<\/w:tc>/g, tc => { cells.push(cellText(tc).replace(/\s*\n\s*/g, " ")); return tc; });
+        out.push(cells.join(" | "));
+        return tr;
+      });
+    } else out.push(/\/>$/.test(m) ? "" : cellText(m));
+    return m;
+  });
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/** Файл → текст: .docx, .txt, .md, .csv (UTF-8 или Windows-1251). */
+export function readText(name, bytes) {
+  const ext = (/\.(\w+)$/.exec(String(name).toLowerCase()) || [])[1];
+  if (ext === "docx") return docxText(unzip(bytes, n => n === "word/document.xml"));
+  if (ext === "txt" || ext === "md" || ext === "csv" || ext === "tsv") return decodeText(bytes).trim();
+  if (ext === "doc" || ext === "rtf") throw new Error("Старый формат: сохраните файл как .docx и загрузите снова");
+  throw new Error("Поддерживаются .docx, .txt, .md и .csv");
+}

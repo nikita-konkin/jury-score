@@ -611,6 +611,23 @@ ul.plain li a { display: block; padding: 10px 0; border-top: 1px solid var(--lin
   .apps .app-panel select { max-width: 560px; }
 }
 
+/* обработка на своём компьютере */
+.jobs-worker { margin-top: 10px; font-weight: 600; color: var(--warn); }
+.jobs-worker.ok { color: var(--ok); }
+.jobs-steps { margin: 4px 0 12px; padding-left: 22px; font-size: 14px; }
+.jobs-steps li { margin-bottom: 6px; }
+.jobs-key pre.extra { margin: 8px 0; user-select: all; -webkit-user-select: all; }
+.badge.job-done, .badge.job-applied { color: var(--ok); }
+.badge.job-failed { color: var(--err); }
+.badge.job-running { color: var(--warn); }
+.badge.job-cancelled { color: var(--muted); }
+.job-error { color: var(--err); }
+.job-items { margin: 0; padding-left: 22px; font-size: 14px; }
+.job-items li { margin-bottom: 4px; }
+.job-errors { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--err); }
+.job-program { max-height: 60vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.job-program .seg.days { top: 0; }
+
 @media print {
   html, body { background: #fff !important; }
   .top, .bg, .toast, .savebar, .no-print { display: none !important; }

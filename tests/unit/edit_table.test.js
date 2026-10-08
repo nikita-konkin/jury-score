@@ -75,3 +75,17 @@ test("неподдерживаемые форматы — понятная ош�
   assert.equal(t.sectionNo("Секция 3"), 3);
   assert.equal(t.sectionNo("Дистанционное", [{ no: 2, title: "Дистанционное зондирование" }]), 2);
 });
+
+test("текст для обработчика: абзацы и строки таблиц .docx по порядку, .txt в cp1251", async () => {
+  const X = await T();
+  const p = s => `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t xml:space="preserve">${s}</w:t></w:r></w:p>`;
+  const tc = s => `<w:tc><w:tcPr/>${p(s)}</w:tc>`;
+  const xml = `<w:document><w:body>${p("Информационное письмо")}<w:p/>` +
+    `<w:tbl><w:tr>${tc("ФИО")}${tc("Доклад")}</w:tr><w:tr>${tc("Иванова А. Б.")}${tc("Тропосфера &amp; ионосфера")}</w:tr></w:tbl>` +
+    `${p("Срок — 1 сентября")}</w:body></w:document>`;
+  const docx = zipSync({ "word/document.xml": strToU8(xml) });
+  assert.equal(X.readText("письмо.docx", docx), "Информационное письмо\n\nФИО | Доклад\nИванова А. Б. | Тропосфера & ионосфера\nСрок — 1 сентября");
+  const cp1251 = Uint8Array.from([0xcf, 0xf0, 0xee, 0xe3, 0xf0, 0xe0, 0xec, 0xec, 0xe0]); // «Программа»
+  assert.equal(X.readText("a.txt", cp1251), "Программа");
+  assert.throws(() => X.readText("a.doc", cp1251), /\.docx/);
+});

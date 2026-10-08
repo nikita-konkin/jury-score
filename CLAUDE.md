@@ -7,10 +7,11 @@
 ## Архитектура
 
 - Сервер: PocketBase 0.40 + SQLite на VPS в РФ (`conf.konkin-nikita.ru`, пока не развёрнут).
-  - `pb/pb_migrations/` — коллекции программы (`events`, `rooms`, `sections`, `days`, `sessions`, `items`, `program_versions`, `users.is_admin`) и ботов (`api_keys`, `feedback`, `feedback_groups`, токены черновика и приглашения в `events`), жюри (`scores`, `scores_deleted`, коды комиссии в `events`) и заявки (`applications`).
+  - `pb/pb_migrations/` — коллекции программы (`events`, `rooms`, `sections`, `days`, `sessions`, `items`, `program_versions`, `users.is_admin`) и ботов (`api_keys`, `feedback`, `feedback_groups`, токены черновика и приглашения в `events`), жюри (`scores`, `scores_deleted`, коды комиссии в `events`), заявки (`applications`) и задачи обработчика (`jobs`).
   - `pb/pb_hooks/api_v1.pb.js` — маршруты `/api/v1`. Логика — в `pb/pb_hooks/lib/`: `program_store.js` (документ ↔ строки, версии), `access.js` (ключи, токены, права, лимиты, `baseUrl`), `feedback_store.js` (группировка, ответ боту, changelog), `maintenance.js` (очистка черновиков, сводка). `cron.pb.js` — расписание, `cli.pb.js` — команды `pocketbase apikey …` и `pocketbase admin <email>`.
   - `pb/pb_hooks/jury.pb.js` + `lib/jury_store.js` — жюри `/api/jury/{id}` (перенос `Code.gs`) и коды комиссии `/api/v1/events/{id}/jury`.
   - `pb/pb_hooks/apply.pb.js` + `lib/apply_store.js` — заявки: форма `/api/apply/{id}`, своя заявка по токену, модерация `/api/v1/events/{id}/applications`.
+  - `pb/pb_hooks/jobs.pb.js` + `lib/jobs_store.js` — задачи локального обработчика (`jobs`), ключи `process_jobs` для своего компьютера.
   - Ссылки в ответах (`invite_url`, `preview_url`) строятся от `CONF_PUBLIC_URL`, затем от Application URL из настроек (если не по умолчанию), затем от хоста запроса.
 - Фронтенд `web/`: Preact + esbuild (`web/build.mjs`) → `dist/`, его раздаёт PocketBase (`--publicDir`). Бандлы iife (динамического import нет в Chrome 61–62 и Firefox 60–66): `app.js` (бюджет 80 КБ gzip) и `editor.js` — конструктор, грузится тегом `<script>` только на `#/edit` и `#/create`. preact, `api.js`, `util.js`, `hooks.js`, `Program.jsx` конструктор берёт у `app.js` через `window.__confShared` (плагин `sharedFromApp` в `build.mjs`): второй экземпляр preact ломает хуки. Новый общий модуль добавляется и в `SHARED` в `build.mjs`, и в `window.__confShared` в `app.jsx`. Маршруты на хэше: `#/claim/<токен>`, `#/preview/<токен>`, `#/e/<slug>`, `#/my/<id>`, `#/new` (вставка ответа чат-бота). `web/src/gate.js` (ES5, встраивается в `<head>`) показывает «Браузер устарел» и включает класс `lite`.
 - Конструктор `#/edit/<id>[/d/<день>[/s/<заседание>]]` (`web/src/pages/Editor.jsx`): правка идёт в копии документа, после каждого действия — `ConfModel.normalize` (время и проверки на месте), «Сохранить» шлёт документ целиком с `base_version` (409 — программу изменили в другом месте). Несохранённое пишется в localStorage сразу в `commit` (не в эффекте — иначе теряется при мгновенной перезагрузке). Нижние листы — `web/src/edit/sheets.jsx`; лист открывается с `history.pushState`, чтобы «Назад» на телефоне закрывал его.
@@ -50,6 +51,14 @@
 - «Принять» добавляет доклад в заседание и сохраняет новую версию программы с `base_version`; `item_code` заявки — код этого доклада. Контакты в программу не попадают.
 - Форма (`pages/Apply.jsx`) — в `app.js`, модерация (`pages/Applications.jsx`) — в `editor.js`; общие функции — `web/src/apply/data.js`.
 
+## Локальный обработчик
+
+- `worker/worker.mjs` — на компьютере организатора: `POST /api/v1/jobs/claim` → LM Studio (`/v1/chat/completions`) → проверка `shared/model.js`, при ошибках одна попытка исправления по отчёту → `POST /api/v1/jobs/{id}/result`. Функции `runOnce` и `processJob` экспортируются для тестов.
+- Ключ обработчика выдаёт себе владелец (`/api/v1/worker-keys`): только `process_jobs`, `issued_by` — он сам; `claim` отдаёт задачи только мероприятий, где он владелец. Ключ без `issued_by` (из CLI) берёт любые.
+- Сервер перепроверяет результат: программа — `normalize`, доклады — `checkTalks` (поля с контактами вырезаются, коды и время не принимаются). С ошибками — `failed`, отчёт сохраняется.
+- Применяет только владелец: программа заменяется целиком, доклады — в конец выбранного заседания; новая версия с `base_version`. Текст материалов стирается при применении и отмене, задачи старше 30 дней удаляет плановая задача. Задача в работе дольше 30 минут возвращается в очередь (до 3 попыток).
+- Интерфейс — `pages/Jobs.jsx` (`#/jobs/<id>`, в `editor.js`); текст из .docx — `readText` в `web/src/edit/table.js`.
+
 ## PocketBase: подводные камни
 
 - Обработчики `routerAdd` выполняются в изолированных контекстах: `require` — внутри каждого обработчика, переменные уровня файла недоступны.
@@ -86,5 +95,6 @@ npm run test:e2e             # Playwright: приглашение и конст�
 npm run build                # dist/
 npm run pb:superuser -- admin@example.com 'пароль'   # суперпользователь в pb/pb_data
 npm run pb                   # сборка и serve --dev на 127.0.0.1:8090, дашборд /_/
+npm run worker -- --server http://127.0.0.1:8090 --key ck_…   # локальный обработчик, LM Studio на :1234
 node scripts/pb.js apikey create "Claude" create_events,update_own,read_own,send_feedback
 ```
