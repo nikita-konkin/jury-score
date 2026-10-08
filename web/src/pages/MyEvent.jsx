@@ -59,6 +59,7 @@ export function MyEvent({ id, toast }) {
           <button class="btn" disabled={busy} onClick={togglePublish}>{published ? "Снять с публикации" : "Опубликовать"}</button>
           {published ? <button class="btn" onClick={() => copyText(publicUrl).then(() => toast("Ссылка на программу скопирована"))}>Ссылка для участников</button> : null}
           <button class="btn" disabled={busy} onClick={coInvite}>Пригласить соавтора</button>
+          <a class="btn" href={"#/print/" + event.id + "/program"}>Документы для печати</a>
           <a class="btn" href={"#/create/" + event.id}>Создать по образцу</a>
           <button class="btn" onClick={() => download(event.slug + ".program.json", JSON.stringify(program, null, 2) + "\n")}>Скачать JSON</button>
           <button class="btn" onClick={() => botKit(program).then(t => copyText(t)).then(() => toast("Набор для чат-бота скопирован"), e => toast(e.message))}>

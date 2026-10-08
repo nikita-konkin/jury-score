@@ -2,5 +2,6 @@
 // подставляются из app.js (см. SHARED в build.mjs), поэтому этот файл грузится только после него.
 import { Editor } from "./pages/Editor.jsx";
 import { Create } from "./pages/Create.jsx";
+import { Print } from "./print/Print.jsx";
 
-window.ConfEditor = { Editor, Create };
+window.ConfEditor = { Editor, Create, Print };

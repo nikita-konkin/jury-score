@@ -83,7 +83,7 @@ export function View({ url, preview, toast }) {
               <button class="btn" onClick={share}>Поделиться</button>
               <a class="btn" href={"webcal://" + location.host + icsPath}>В календарь</a>
             </div>
-            <p class="muted small cal-note">Подписка в календаре обновляется сама. <a href={icsPath} download={(ev.slug || "program") + ".ics"}>Скачать файл .ics</a></p>
+            <p class="muted small cal-note">Подписка в календаре обновляется сама. <a href={icsPath} download={(ev.slug || "program") + ".ics"}>Скачать файл .ics</a> · <a href={"#/print/" + ev.slug + "/program"}>Версия для печати</a></p>
           </div>
         )}
       </div>

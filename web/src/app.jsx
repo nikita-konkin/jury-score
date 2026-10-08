@@ -59,6 +59,7 @@ function Page({ route, toast, refresh }) {
   if ((m = /^\/my\/(\w+)$/.exec(route))) return <MyEvent id={m[1]} toast={toast} />;
   if ((m = /^\/edit\/(\w+)(\/.*)?$/.exec(route))) return <Lazy key={"e" + m[1]} name="Editor" props={{ id: m[1], sub: m[2] || "", toast }} />;
   if ((m = /^\/create(?:\/(\w+))?$/.exec(route))) return <Lazy key={"c" + (m[1] || "")} name="Create" props={{ from: m[1] || "", toast }} />;
+  if ((m = /^\/print\/([\w-]+)(?:\/(\w+))?$/.exec(route))) return <Lazy key={"p" + m[1]} name="Print" props={{ id: m[1], kind: m[2] || "program", toast }} />;
   if (route === "/new") return <FromJson toast={toast} />;
   return <Home toast={toast} refresh={refresh} />;
 }
