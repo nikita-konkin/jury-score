@@ -64,6 +64,20 @@
         }
       }
     },
+    "/api/v1/events/{id}/program.ics": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "description": "id или адрес (slug) мероприятия", "schema": { "type": "string" } },
+        { "name": "items", "in": "query", "description": "1 — каждый элемент отдельным событием (по умолчанию — заседания)", "schema": { "type": "string" } },
+        { "name": "item", "in": "query", "description": "Код одного элемента, например s1-3", "schema": { "type": "string" } }],
+      "get": {
+        "operationId": "getEventCalendar",
+        "summary": "Календарь iCalendar для подписки",
+        "responses": {
+          "200": { "description": "text/calendar", "content": { "text/calendar": { "schema": { "type": "string" } } } },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
     "/api/v1/events/{id}/versions": {
       "parameters": [{ "name": "id", "in": "path", "required": true, "description": "id или адрес (slug) мероприятия", "schema": { "type": "string" } }],
       "get": {

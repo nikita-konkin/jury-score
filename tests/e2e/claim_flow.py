@@ -11,12 +11,16 @@
 import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from playwright.sync_api import sync_playwright  # noqa: E402
 
 from common import PHONE, call, check_layout, fixture, server, shot  # noqa: E402
+
+# до конференции: публичная страница открывается на первом дне, без «сейчас / далее»
+BEFORE = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
 
 
 def main():
@@ -86,6 +90,7 @@ def main():
             # опубликованная программа без входа: 390 px, тёмная тема
             ctx = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True, color_scheme="dark")
             page = ctx.new_page()
+            page.clock.set_fixed_time(BEFORE)
             page.goto(base + "/#/e/" + created["event"]["slug"])
             page.get_by_text("Заседание №1").first.wait_for()
             check_layout(page, "публичная 390")
@@ -95,6 +100,7 @@ def main():
             # десктоп
             ctx = browser.new_context(viewport={"width": 1280, "height": 800})
             page = ctx.new_page()
+            page.clock.set_fixed_time(BEFORE)
             page.goto(base + "/#/e/" + created["event"]["slug"])
             page.get_by_text("Заседание №1").first.wait_for()
             check_layout(page, "публичная 1280")

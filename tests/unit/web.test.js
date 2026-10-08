@@ -22,6 +22,14 @@ test("сборка: index.html с проверкой браузера, app.js в
     assert.match(html, /app\.js\?v=[0-9a-f]{10}/);
     assert.doesNotMatch(html, /\/\*(GATE|JS_HASH|CSS_HASH)\*\//);
     ["llms.txt", "openapi.json", "schema/program.v1.json"].forEach(f => assert.ok(fs.existsSync(path.join(out, f)), f));
+    // конструктор — отдельно: публичная программа его не грузит, а он не тянет свой preact
+    const app = fs.readFileSync(path.join(out, "app.js"), "utf8");
+    const editor = fs.readFileSync(path.join(out, "editor.js"), "utf8");
+    assert.doesNotMatch(app, /Доклады из таблицы|sharedStrings/, "код конструктора попал в app.js");
+    assert.match(app, /editor\.js\?v=[0-9a-f]{10}/);
+    assert.match(editor, /__confShared/);
+    assert.ok(r.editor.gzip < r.js.gzip * 3, `editor.js ${r.editor.gzip} байт в gzip — не попал ли туда preact и общие модули`);
+    assert.doesNotMatch(html, /editor\.js/, "конструктор не должен грузиться сразу");
   } finally {
     fs.rmSync(out, { recursive: true, force: true });
   }

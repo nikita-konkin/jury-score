@@ -36,7 +36,7 @@ function setup(test) {
     const text = await res.text();
     let json = null;
     try { json = JSON.parse(text); } catch (e) { /* не JSON */ }
-    return { status: res.status, json, text };
+    return { status: res.status, json, text, type: res.headers.get("content-type") || "", cache: res.headers.get("cache-control") || "" };
   };
 
   srv.login = async (collection, identity, password) => {

@@ -1,6 +1,8 @@
 // Программа мероприятия для чтения: дни вкладками, заседания карточками, элементы списком.
+// now ({ date, min }) отмечает идущее и прошедшее; itemAction(it) — кнопка у раскрытого элемента.
 import { useState } from "preact/hooks";
 import { dayLabel, dateRange, weekday } from "../util.js";
+import { itemState } from "../public/live.js";
 
 const TYPE_LABEL = { break: "Перерыв", lunch: "Обед", ceremony: "Церемония", activity: "Событие" };
 const FORMAT_LABEL = { online: "онлайн", poster: "стенд" };
@@ -16,11 +18,15 @@ export function EventHeader({ program }) {
   );
 }
 
-function Item({ it, sections }) {
+export function Item({ it, sections, state, action }) {
+  const [open, setOpen] = useState(false);
   const isTalk = it.type === "talk" || it.type === "plenary";
   const people = isTalk ? (it.authors && it.authors.length ? it.authors : [it.speaker]).filter(Boolean) : [];
+  const toggle = action && isTalk ? () => setOpen(!open) : null;
   return (
-    <li class={"it it-" + it.type}>
+    <li class={"it it-" + it.type + (state ? " " + state : "") + (toggle ? " tap" : "")} onClick={toggle}
+      role={toggle ? "button" : undefined} tabIndex={toggle ? 0 : undefined} aria-expanded={toggle ? open : undefined}
+      onKeyDown={toggle ? e => { if (e.key === "Enter" && e.target === e.currentTarget) toggle(); } : undefined}>
       <div class="it-time">{it.all_day ? "весь день" : it.start}</div>
       <div class="it-body">
         <div class="it-title">
@@ -42,12 +48,13 @@ function Item({ it, sections }) {
           {!it.all_day && it.end ? <span>до {it.end}</span> : null}
         </div>
         {it.note ? <div class="it-note">{it.note}</div> : null}
+        {open ? <div class="it-actions" onClick={e => e.stopPropagation()}>{action(it)}</div> : null}
       </div>
     </li>
   );
 }
 
-function Session({ s, sections }) {
+function Session({ s, day, sections, now, action }) {
   const last = s.items.length ? s.items[s.items.length - 1] : null;
   const end = last && !last.all_day ? last.end : s.end;
   return (
@@ -59,13 +66,13 @@ function Session({ s, sections }) {
         {s.cochair ? <div class="ses-person">Сопредседатель: {s.cochair}</div> : null}
         {s.secretary ? <div class="ses-person">Секретарь: {s.secretary}</div> : null}
       </div>
-      <ul class="items">{s.items.map((it, i) => <Item key={it.code || i} it={it} sections={sections} />)}</ul>
+      <ul class="items">{s.items.map((it, i) => <Item key={it.code || i} it={it} sections={sections} state={itemState(day, it, now)} action={action} />)}</ul>
     </section>
   );
 }
 
-export function Program({ program }) {
-  const [day, setDay] = useState(0);
+export function Program({ program, now, initialDay, action }) {
+  const [day, setDay] = useState(initialDay > 0 ? initialDay : 0);
   const sections = {};
   program.sections.forEach(s => { sections[s.no] = s; });
   const d = program.days[Math.min(day, program.days.length - 1)];
@@ -83,7 +90,7 @@ export function Program({ program }) {
       {d ? (
         <div>
           {d.title ? <p class="day-title">{d.title}</p> : null}
-          {d.sessions.length ? d.sessions.map((s, i) => <Session key={i} s={s} sections={sections} />)
+          {d.sessions.length ? d.sessions.map((s, i) => <Session key={i} s={s} day={d} sections={sections} now={now} action={action} />)
             : <p class="muted empty">В этот день заседаний нет</p>}
         </div>
       ) : <p class="muted empty">В программе пока нет дней</p>}

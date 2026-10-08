@@ -2,6 +2,7 @@
 // ctx: { doc, report, idx, commit(doc, note?), close(), open(sheet), goTo(path, focus), base, eventId, toast, people, rooms }
 import { useState, useEffect } from "preact/hooks";
 import M from "../../../shared/model.js";
+import Ics from "../../../shared/ics.js";
 import { api, errorText } from "../api.js";
 import { dayLabel, shortDate } from "../util.js";
 import { Program } from "../components/Program.jsx";
@@ -18,6 +19,17 @@ const TYPE_TITLE = { break: "Кофе-брейк", lunch: "Обед", ceremony: 
 const FORMATS = [["", "не указана"], ["oral", "очно"], ["online", "онлайн"], ["poster", "стендовый"]];
 const REG_OF = { talk: "talk_min", plenary: "plenary_min", break: "break_min", lunch: "lunch_min" };
 const SOURCE = { ui: "интерфейс", api: "API", mcp: "MCP", import: "импорт" };
+const TZ_CITY = {
+  "Europe/Kaliningrad": "Калининград", "Europe/Moscow": "Москва", "Europe/Samara": "Самара", "Asia/Yekaterinburg": "Екатеринбург",
+  "Asia/Omsk": "Омск", "Asia/Novosibirsk": "Новосибирск", "Asia/Krasnoyarsk": "Красноярск", "Asia/Irkutsk": "Иркутск",
+  "Asia/Yakutsk": "Якутск", "Asia/Vladivostok": "Владивосток", "Asia/Magadan": "Магадан", "Asia/Kamchatka": "Камчатка",
+  "Europe/Minsk": "Минск", "Asia/Almaty": "Алматы", "Asia/Tashkent": "Ташкент", "UTC": "UTC",
+};
+const tzLabel = tz => {
+  const off = Ics.TZ_OFFSETS[tz];
+  const h = off == null ? "" : ` (UTC${off >= 0 ? "+" : "−"}${Math.abs(off) / 60})`;
+  return (TZ_CITY[tz] || tz) + h;
+};
 
 const trimOrDelete = (obj, form, keys) => keys.forEach(k => {
   const v = String(form[k] == null ? "" : form[k]).trim();
@@ -294,7 +306,7 @@ function EventSheet({ ctx }) {
   const jury = ev.jury || {};
   const [form, setForm] = useState(() => {
     const f = {};
-    ["title", "subtitle", "date_from", "date_to", "city", "venue", "organizer"].forEach(k => { f[k] = ev[k] || ""; });
+    ["title", "subtitle", "date_from", "date_to", "city", "venue", "organizer", "timezone"].forEach(k => { f[k] = ev[k] || ""; });
     Object.keys(M.DEFAULT_REGULATIONS).forEach(k => { f[k] = String(regs[k]); });
     f.jury = !!jury.enabled || !!(jury.criteria && jury.criteria.length);
     f.criteria = (jury.criteria || []).join("\n");
@@ -310,7 +322,7 @@ function EventSheet({ ctx }) {
     if (!M.normDate(form.date_from)) return setErr("Нужна дата начала");
     const next = clone(ctx.doc);
     const e = next.event;
-    trimOrDelete(e, form, ["title", "subtitle", "date_from", "date_to", "city", "venue", "organizer"]);
+    trimOrDelete(e, form, ["title", "subtitle", "date_from", "date_to", "city", "venue", "organizer", "timezone"]);
     e.regulations = {};
     for (const k of Object.keys(M.DEFAULT_REGULATIONS)) {
       const n = parseInt(form[k], 10);
@@ -334,6 +346,11 @@ function EventSheet({ ctx }) {
       <Field label="Город"><input value={form.city} onInput={set("city")} /></Field>
       <Field label="Место проведения"><input value={form.venue} onInput={set("venue")} /></Field>
       <Field label="Организатор"><input value={form.organizer} onInput={set("organizer")} /></Field>
+      <Field label="Часовой пояс" hint="Для «сейчас / далее» и календаря участников">
+        <select value={form.timezone} onChange={set("timezone")}>
+          {(TZ_CITY[form.timezone] || !form.timezone ? [] : [form.timezone]).concat(Object.keys(TZ_CITY)).map(tz => <option key={tz} value={tz}>{tzLabel(tz)}</option>)}
+        </select>
+      </Field>
       <p class="sheet-sub">Регламент, минут</p>
       <p class="muted small">Действует на новые элементы и на те, у которых длительность не задана.</p>
       <div class="grid2">

@@ -113,6 +113,28 @@ routerAdd("GET", "/api/v1/events/{id}/program", (e) => {
   return e.json(200, { event: S.eventInfo(ev), program: S.loadProgram(e.app, ev) });
 });
 
+// Календарь .ics для подписки: заседания (?items=1 — каждый элемент, ?item=<код> — один). Опубликованное видят все.
+routerAdd("GET", "/api/v1/events/{id}/program.ics", (e) => {
+  const A = require(`${__hooks}/lib/access.js`);
+  const S = require(`${__hooks}/lib/program_store.js`);
+  const Ics = require(`${__hooks}/../../shared/ics.js`);
+  const ev = S.findEvent(e.app, e.request.pathValue("id"));
+  const acc = ev ? A.access(A.actor(e), ev) : null;
+  if (!ev || !acc.read) throw new NotFoundError("Мероприятие не найдено");
+  const slug = ev.getString("slug");
+  const query = e.request.url.query();
+  const only = query.get("item");
+  const ics = Ics.toIcs(S.loadProgram(e.app, ev), {
+    mode: query.get("items") ? "items" : "sessions", only: only || undefined, uid: slug, url: A.baseUrl(e) + "/#/e/" + slug,
+  });
+  if (only && ics.indexOf("BEGIN:VEVENT") < 0) throw new NotFoundError("Нет элемента с кодом " + only);
+  e.response.header().set("Content-Type", "text/calendar; charset=utf-8");
+  e.response.header().set("Content-Disposition", `inline; filename="${only ? slug + "-" + only.replace(/[^\w-]/g, "") : slug}.ics"`);
+  // черновик видит только владелец — такой ответ не кэшируется
+  e.response.header().set("Cache-Control", ev.getString("status") === "published" ? "public, max-age=300" : "private, no-store");
+  return e.string(200, ics);
+});
+
 // Заменить программу целиком; каждая замена — новая версия. Программа с ошибками не сохраняется.
 routerAdd("PUT", "/api/v1/events/{id}/program", (e) => {
   const A = require(`${__hooks}/lib/access.js`);

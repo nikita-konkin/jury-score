@@ -160,8 +160,28 @@ t("импорт, чтение, права, новая версия, отказ �
   const item = (await api("GET", `/api/collections/items/records?perPage=1&filter=${encodeURIComponent(`event="${imp.json.event.id}"`)}`, undefined, ownerToken)).json.items[0];
   assert.notEqual((await api("PATCH", "/api/collections/items/records/" + item.id, { title: "x" }, ownerToken)).status, 200);
 
+  // календарь .ics: черновик — только владельцу и без кэша
+  assert.equal((await api("GET", "/api/v1/events/rwp-2026/program.ics")).status, 404);
+  const draftIcs = await api("GET", "/api/v1/events/rwp-2026/program.ics", undefined, ownerToken);
+  assert.equal(draftIcs.status, 200);
+  assert.match(draftIcs.cache, /no-store/);
+
   // после публикации программа доступна всем
   await api("PATCH", "/api/collections/events/records/" + imp.json.event.id, { status: "published" }, suToken);
+  const ics = await api("GET", "/api/v1/events/rwp-2026/program.ics");
+  assert.equal(ics.status, 200);
+  assert.match(ics.type, /^text\/calendar/);
+  assert.match(ics.cache, /public/);
+  const icsExpected = require("../../shared/ics.js").toIcs(changed, { uid: "rwp-2026" });
+  const events = s => (s.match(/BEGIN:VEVENT/g) || []).length;
+  assert.equal(events(ics.text), events(icsExpected));
+  assert.match(ics.text, /DTSTART:20261007T060000Z/);
+  assert.match(ics.text.replace(/\r\n /g, ""), /URL:http:\/\/127\.0\.0\.1:\d+\/#\/e\/rwp-2026/);
+  const one = await api("GET", "/api/v1/events/rwp-2026/program.ics?item=s1-2");
+  assert.equal(events(one.text), 1);
+  assert.equal((await api("GET", "/api/v1/events/rwp-2026/program.ics?item=zz9")).status, 404);
+  const perItem = await api("GET", "/api/v1/events/rwp-2026/program.ics?items=1");
+  assert.ok((perItem.text.match(/BEGIN:VEVENT/g) || []).length > (ics.text.match(/BEGIN:VEVENT/g) || []).length);
   const pub = await api("GET", "/api/v1/events/rwp-2026/program");
   assert.equal(pub.status, 200);
   assert.deepEqual(pub.json.program, changed);
