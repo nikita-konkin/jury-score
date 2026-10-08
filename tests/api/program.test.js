@@ -132,6 +132,26 @@ t("импорт, чтение, права, новая версия, отказ �
   assert.equal(versions.json.items[1].author, created.json.id);
   assert.deepEqual(versions.json.items[1].doc, changed);
 
+  // история через /api/v1: новые сверху, с автором; одна версия целиком; чужим — 404
+  const hist = await api("GET", "/api/v1/events/rwp-2026/versions", undefined, ownerToken);
+  assert.equal(hist.status, 200, hist.text);
+  assert.deepEqual(hist.json.versions.map(v => [v.no, v.source, v.note]), [[2, "api", "правка"], [1, "import", "из фикстуры"]]);
+  assert.equal(hist.json.versions[0].author, "owner@example.com");
+  assert.equal(hist.json.versions[0].stats.items, M.normalize(changed).report.stats.items);
+  assert.equal((await api("GET", "/api/v1/events/rwp-2026/versions", undefined, strangerToken)).status, 404);
+  const v1 = await api("GET", "/api/v1/events/rwp-2026/versions/1", undefined, ownerToken);
+  assert.deepEqual(v1.json.program, expected);
+  assert.equal((await api("GET", "/api/v1/events/rwp-2026/versions/9", undefined, ownerToken)).status, 404);
+
+  // base_version: правка по устаревшей копии — 409, версия не растёт
+  const stale = await api("PUT", "/api/v1/events/rwp-2026/program", { program: expected, base_version: 1 }, ownerToken);
+  assert.equal(stale.status, 409, stale.text);
+  assert.equal(stale.json.version, 2);
+  assert.equal((await api("PUT", "/api/v1/events/rwp-2026/program", { program: changed, base_version: "2" }, ownerToken)).status, 400);
+  const fresh = await api("PUT", "/api/v1/events/rwp-2026/program", { program: changed, base_version: 2, note: "без изменений" }, ownerToken);
+  assert.equal(fresh.status, 200, fresh.text);
+  assert.equal(fresh.json.event.version, 3);
+
   // строки не дублируются после замены
   const items = await api("GET", `/api/collections/items/records?perPage=1&filter=${encodeURIComponent(`event="${imp.json.event.id}"`)}`, undefined, suToken);
   assert.equal(items.json.totalItems, M.normalize(changed).report.stats.items);

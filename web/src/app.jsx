@@ -8,6 +8,8 @@ import { Claim } from "./pages/Claim.jsx";
 import { MyEvent } from "./pages/MyEvent.jsx";
 import { FromJson } from "./pages/FromJson.jsx";
 import { View } from "./pages/View.jsx";
+import { Editor } from "./pages/Editor.jsx";
+import { Create } from "./pages/Create.jsx";
 
 function Page({ route, toast, refresh }) {
   let m;
@@ -15,6 +17,8 @@ function Page({ route, toast, refresh }) {
   if ((m = /^\/preview\/([\w-]+)$/.exec(route))) return <View url={"/api/v1/preview/" + m[1]} preview />;
   if ((m = /^\/e\/([\w-]+)$/.exec(route))) return <View url={`/api/v1/events/${m[1]}/program`} />;
   if ((m = /^\/my\/(\w+)$/.exec(route))) return <MyEvent id={m[1]} toast={toast} />;
+  if ((m = /^\/edit\/(\w+)(\/.*)?$/.exec(route))) return <Editor key={m[1]} id={m[1]} sub={m[2] || ""} toast={toast} />;
+  if ((m = /^\/create(?:\/(\w+))?$/.exec(route))) return <Create key={m[1] || ""} from={m[1] || ""} toast={toast} />;
   if (route === "/new") return <FromJson toast={toast} />;
   return <Home toast={toast} refresh={refresh} />;
 }

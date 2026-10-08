@@ -53,7 +53,8 @@ function MyEvents({ me, refresh }) {
         <h1 class="page-title">Мои мероприятия</h1>
         <button class="btn" onClick={() => { setAuth(null); refresh(); }}>Выйти</button>
       </div>
-      <a class="btn primary wide" href="#/new">Создать из ответа чат-бота</a>
+      <a class="btn primary wide" href="#/create">Новое мероприятие</a>
+      <a class="btn wide" href="#/new">Создать из ответа чат-бота</a>
       {list.loading ? <p class="muted center">Загрузка…</p> : list.error ? <p class="err">{list.error}</p> : (
         list.data.length ? (
           <ul class="ev-list">

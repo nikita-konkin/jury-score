@@ -125,11 +125,16 @@ routerAdd("PUT", "/api/v1/events/{id}/program", (e) => {
   if (!acc.write) throw new ForbiddenError("Нет прав на изменение программы");
   const body = S.readBody(e);
   if (a.key && body.raw.length > A.limit(a.key, "max_doc_kb") * 1024) throw new ApiError(413, "Документ больше лимита ключа");
+  const base = body.meta.base_version;
+  if (base != null && !(Number.isInteger(base) && base >= 0)) throw new BadRequestError("base_version — номер версии, с которой начата правка");
   const res = S.saveProgram(e.app, {
-    event: ev, program: body.program, source: A.clientSource(e), note: body.meta.note,
+    event: ev, program: body.program, source: A.clientSource(e), note: body.meta.note, baseVersion: base,
     author: a.user ? a.user.id : "", apiKey: a.key ? a.key.id : acc.via === "draft" ? ev.getString("created_by_key") : "",
   });
-  if (!res.ok) return e.json(res.status || 422, { ok: false, message: res.message || "Программа содержит ошибки и не сохранена", report: res.report });
+  if (!res.ok) {
+    return e.json(res.status || 422, { ok: false, message: res.message || "Программа содержит ошибки и не сохранена", report: res.report,
+      version: res.version });
+  }
   if (acc.via === "key" || acc.via === "draft") {
     FB.addExtraFeedback(e.app, res.report, {
       source: "auto", apiKey: a.key ? a.key.id : ev.getString("created_by_key"), event: ev.id,
@@ -137,6 +142,29 @@ routerAdd("PUT", "/api/v1/events/{id}/program", (e) => {
     });
   }
   return e.json(200, { ok: true, event: S.eventInfo(res.event), report: res.report });
+});
+
+// История версий программы и одна версия целиком (для отката и сравнения)
+routerAdd("GET", "/api/v1/events/{id}/versions", (e) => {
+  const A = require(`${__hooks}/lib/access.js`);
+  const S = require(`${__hooks}/lib/program_store.js`);
+  const ev = S.findEvent(e.app, e.request.pathValue("id"));
+  const acc = ev ? A.access(A.actor(e), ev) : null;
+  if (!ev || !acc.read) throw new NotFoundError("Мероприятие не найдено");
+  if (!acc.write) throw new ForbiddenError("Историю версий видят те, кто может править программу");
+  return e.json(200, { event: S.eventInfo(ev), versions: S.listVersions(e.app, ev) });
+});
+
+routerAdd("GET", "/api/v1/events/{id}/versions/{no}", (e) => {
+  const A = require(`${__hooks}/lib/access.js`);
+  const S = require(`${__hooks}/lib/program_store.js`);
+  const ev = S.findEvent(e.app, e.request.pathValue("id"));
+  const acc = ev ? A.access(A.actor(e), ev) : null;
+  if (!ev || !acc.read) throw new NotFoundError("Мероприятие не найдено");
+  if (!acc.write) throw new ForbiddenError("Историю версий видят те, кто может править программу");
+  const v = S.findVersion(e.app, ev, parseInt(e.request.pathValue("no"), 10) || 0);
+  if (!v) throw new NotFoundError("Нет такой версии");
+  return e.json(200, { no: v.getInt("no"), note: v.getString("note"), created: v.getDateTime("created").string(), program: JSON.parse(toString(v.get("doc"))) });
 });
 
 // Новая ссылка-приглашение (прежняя перестаёт действовать). До принятия — черновой токен или ключ,

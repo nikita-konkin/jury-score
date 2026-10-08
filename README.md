@@ -8,7 +8,7 @@
 
 ## Состояние
 
-Готовы ядро (этап 1) и API для чат-ботов (этап 2):
+Готовы ядро (этап 1), API для чат-ботов (этап 2) и мобильный конструктор (этап 3):
 
 - [`public/schema/program.v1.json`](public/schema/program.v1.json) — JSON Schema документа программы `conf.program/v1`;
 - [`shared/model.js`](shared/model.js) — нормализация, авто-время по регламенту, проверки (наложения залов, докладчик в двух местах, время «наоборот» и т. д.), разбор документа на строки БД и сборка обратно;
@@ -20,12 +20,14 @@
   | `POST /api/v1/events` | черновик по API-ключу (или вошедшим пользователем): `invite_url`, `preview_url`, `draft_token` |
   | `GET`/`PUT /api/v1/events/{id или slug}/program` | программа в формате `conf.program/v1`; замена — новая версия |
   | `GET`/`POST /api/v1/claim/{токен}` | предпросмотр по приглашению и принятие черновика в свой аккаунт |
+  | `GET /api/v1/events/{id}/versions[/{no}]` | история версий и одна версия целиком |
   | `POST /api/v1/events/{id}/invite`, `/publish`, `/unpublish` | приглашение соавтора, публикация |
   | `POST /api/v1/feedback`, `GET /api/v1/changelog` | обратная связь от ботов и список изменений |
 
 - [`public/llms.txt`](public/llms.txt) и [`public/openapi.json`](public/openapi.json) — инструкции для ботов и GPT Actions;
 - [`mcp/`](mcp/) — MCP-сервер для Claude, LM Studio и других клиентов (stdio и HTTP);
 - [`web/`](web/) — мобильный фронтенд для браузеров с 2018 года: принятие приглашения, мои мероприятия, публикация, публичная программа, «Создать из ответа чат-бота» (для ботов без инструментов);
+- конструктор программы на телефоне: дни → заседания → элементы, правка в нижних листах, порядок кнопками, проверка на месте, отмена, черновик без потери при перезагрузке, история версий с откатом, доклады из таблицы (.xlsx, .csv, .docx), новое мероприятие и «по образцу»;
 - [`tests/bots/local_bench.mjs`](tests/bots/local_bench.mjs) — замер того, как локальная модель в LM Studio собирает программу из материалов;
 - [`fixtures/`](fixtures/) — программы RWP-2026 (и вариант со сбитым временем секции 4) и РРВ-2023.
 
@@ -38,7 +40,7 @@ npm install
 npm test             # юнит-тесты
 npm run test:api     # API против временного PocketBase (нужен бинарник, путь — в PB_BIN)
 npm run test:mcp     # MCP-сервер
-python tests/e2e/claim_flow.py   # сквозной сценарий в Playwright
+npm run test:e2e     # сквозные сценарии в Playwright (pip install playwright)
 ```
 
 ## Запуск

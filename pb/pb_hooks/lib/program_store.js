@@ -85,10 +85,15 @@ function saveProgram(app, opts) {
       slug = uniqueSlug(app, base.length >= 2 ? base : "event");
     }
   }
-  let event = null, version = 0;
+  let event = null, version = 0, conflict = null;
 
   app.runInTransaction((tx) => {
     let ev = opts.event ? tx.findRecordById("events", opts.event.id) : null;
+    // base_version: правка по устаревшей копии не затирает чужие изменения
+    if (ev && opts.baseVersion != null && ev.getInt("version") !== opts.baseVersion) {
+      conflict = ev.getInt("version");
+      return;
+    }
     if (!ev) {
       ev = new Record(tx.findCollectionByNameOrId("events"));
       ev.set("slug", slug);
@@ -137,6 +142,10 @@ function saveProgram(app, opts) {
     tx.save(v);
     event = ev;
   });
+  if (conflict != null) {
+    return { ok: false, status: 409, version: conflict, report: res.report,
+      message: `Программу уже изменили (версия ${conflict}, у вас ${opts.baseVersion}). Загрузите свежую версию и повторите правку.` };
+  }
   return { ok: true, report: res.report, event: event, version: version };
 }
 
@@ -157,4 +166,28 @@ function eventInfo(ev) {
     version: ev.getInt("version"), claimed: ev.getStringSlice("owners").length > 0 };
 }
 
-module.exports = { M, MAX_BODY, readBody, findEvent, loadProgram, saveProgram, setStatus, eventInfo };
+/** История версий: без документов, новые сверху. */
+function listVersions(app, ev) {
+  return app.findRecordsByFilter("program_versions", "event = {:e}", "-no", 200, 0, { e: ev.id }).map((v) => {
+    let author = "";
+    if (v.getString("author")) {
+      try { const u = app.findRecordById("users", v.getString("author")); author = u.getString("name") || u.getString("email"); } catch (err) { author = ""; }
+    }
+    let key = "";
+    if (v.getString("api_key")) {
+      try { key = app.findRecordById("api_keys", v.getString("api_key")).getString("name"); } catch (err) { key = ""; }
+    }
+    return { no: v.getInt("no"), source: v.getString("source"), author: author, api_key: key, note: v.getString("note"),
+      created: v.getDateTime("created").string(), stats: JSON.parse(toString(v.get("stats")) || "{}") };
+  });
+}
+
+function findVersion(app, ev, no) {
+  try {
+    return app.findFirstRecordByFilter("program_versions", "event = {:e} && no = {:n}", { e: ev.id, n: no });
+  } catch (err) {
+    return null;
+  }
+}
+
+module.exports = { M, MAX_BODY, readBody, findEvent, loadProgram, saveProgram, setStatus, eventInfo, listVersions, findVersion };

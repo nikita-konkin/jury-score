@@ -11,6 +11,9 @@
   - `pb/pb_hooks/api_v1.pb.js` — маршруты `/api/v1`. Логика — в `pb/pb_hooks/lib/`: `program_store.js` (документ ↔ строки, версии), `access.js` (ключи, токены, права, лимиты, `baseUrl`), `feedback_store.js` (группировка, ответ боту, changelog), `maintenance.js` (очистка черновиков, сводка). `cron.pb.js` — расписание, `cli.pb.js` — команды `pocketbase apikey …` и `pocketbase admin <email>`.
   - Ссылки в ответах (`invite_url`, `preview_url`) строятся от `CONF_PUBLIC_URL`, затем от Application URL из настроек (если не по умолчанию), затем от хоста запроса.
 - Фронтенд `web/`: Preact + esbuild (`web/build.mjs`) → `dist/`, его раздаёт PocketBase (`--publicDir`). Один iife-бандл (динамического import нет в Chrome 61–62 и Firefox 60–66), бюджет 80 КБ gzip. Маршруты на хэше: `#/claim/<токен>`, `#/preview/<токен>`, `#/e/<slug>`, `#/my/<id>`, `#/new` (вставка ответа чат-бота). `web/src/gate.js` (ES5, встраивается в `<head>`) показывает «Браузер устарел» и включает класс `lite`.
+- Конструктор `#/edit/<id>[/d/<день>[/s/<заседание>]]` (`web/src/pages/Editor.jsx`): правка идёт в копии документа, после каждого действия — `ConfModel.normalize` (время и проверки на месте), «Сохранить» шлёт документ целиком с `base_version` (409 — программу изменили в другом месте). Несохранённое пишется в localStorage сразу в `commit` (не в эффекте — иначе теряется при мгновенной перезагрузке). Нижние листы — `web/src/edit/sheets.jsx`; лист открывается с `history.pushState`, чтобы «Назад» на телефоне закрывал его.
+  - Чистая логика — `web/src/edit/ops.js` (перемещения, форма элемента, шаблон, пустая программа) и `table.js` (импорт .xlsx/.csv/.docx без SheetJS: zip через fflate, XML регулярками). Их тесты — `tests/unit/edit_*.test.js`; `web/package.json` с `"type": "module"` нужен, чтобы Node импортировал эти файлы.
+  - Время элемента: `anchor: true` — закреплено, иначе считается по порядку. При применении формы `end` всегда удаляется, иначе старый конец перебьёт новую длительность.
 - MCP-сервер `mcp/` — обёртка над `/api/v1` (stdio и Streamable HTTP), см. `mcp/README.md`.
 - Инструкции для ботов: `public/llms.txt`, `public/openapi.json`. Правила формата в `llms.txt` должны совпадать с поведением `model.js`.
 - Центральный формат — документ программы `conf.program/v1` (`public/schema/program.v1.json`). Его используют API, импорт, экспорт, версии и шаблоны.
@@ -57,7 +60,7 @@ npm install
 npm test                     # юнит-тесты: node --test "tests/unit/*.test.js"
 npm run test:api             # /api/v1 против временного PocketBase (пропускается без бинарника)
 npm run test:mcp             # MCP-сервер против временного PocketBase
-python tests/e2e/claim_flow.py [--shots каталог]   # Playwright: приглашение на 320 px, публикация, старый браузер
+npm run test:e2e             # Playwright: приглашение и конструктор на 320 px (tests/e2e/*.py, --shots каталог)
 npm run build                # dist/
 npm run pb:superuser -- admin@example.com 'пароль'   # суперпользователь в pb/pb_data
 npm run pb                   # сборка и serve --dev на 127.0.0.1:8090, дашборд /_/

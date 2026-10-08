@@ -119,9 +119,13 @@ function buildServer(key) {
       program: Program,
       note: z.string().optional(),
       draft_token: z.string().optional(),
+      base_version: z.number().int().min(0).optional()
+        .describe("event.version из get_event_program: если программу успели изменить, вернётся 409 и чужие правки не затрутся"),
     },
-  }, async ({ event_id, program, note, draft_token }) => {
-    const r = await api("PUT", `/api/v1/events/${encodeURIComponent(event_id)}/program`, { program: asProgram(program), note }, draftHeader(draft_token));
+  }, async ({ event_id, program, note, draft_token, base_version }) => {
+    const body = { program: asProgram(program), note };
+    if (base_version != null) body.base_version = base_version;
+    const r = await api("PUT", `/api/v1/events/${encodeURIComponent(event_id)}/program`, body, draftHeader(draft_token));
     return out(Object.assign({}, r.json, { report: brief(r.json.report) }), failed(r));
   });
 

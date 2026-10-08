@@ -53,13 +53,48 @@
       "put": {
         "operationId": "updateEventProgram",
         "summary": "Заменить программу целиком (новая версия)",
-        "description": "Доступно ключу, создавшему черновик (право update_own), или с заголовком X-Draft-Token. Документ с ошибками не сохраняется.",
+        "description": "Доступно ключу, создавшему черновик (право update_own), или с заголовком X-Draft-Token. Документ с ошибками не сохраняется. С base_version правка по устаревшей копии не затирает изменения людей (409).",
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProgramOrWrapper" } } } },
         "responses": {
           "200": { "description": "Сохранено", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SavedProgram" } } } },
           "403": { "$ref": "#/components/responses/Error" },
           "404": { "$ref": "#/components/responses/Error" },
+          "409": { "$ref": "#/components/responses/Error" },
           "422": { "$ref": "#/components/responses/Rejected" }
+        }
+      }
+    },
+    "/api/v1/events/{id}/versions": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "description": "id или адрес (slug) мероприятия", "schema": { "type": "string" } }],
+      "get": {
+        "operationId": "listEventVersions",
+        "summary": "История версий программы",
+        "description": "Новые сверху, без документов. Доступно тем, кто может править программу.",
+        "responses": {
+          "200": { "description": "Версии", "content": { "application/json": { "schema": { "type": "object", "properties": {
+            "event": { "type": "object" },
+            "versions": { "type": "array", "items": { "type": "object", "properties": {
+              "no": { "type": "integer" }, "source": { "type": "string", "enum": ["ui", "api", "mcp", "import"] },
+              "author": { "type": "string" }, "api_key": { "type": "string", "description": "Название ключа бота" },
+              "note": { "type": "string" }, "created": { "type": "string" }, "stats": { "type": "object" } } } } } } } } },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/events/{id}/versions/{no}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "description": "id или адрес (slug) мероприятия", "schema": { "type": "string" } },
+        { "name": "no", "in": "path", "required": true, "description": "Номер версии", "schema": { "type": "integer" } }],
+      "get": {
+        "operationId": "getEventVersion",
+        "summary": "Одна версия программы целиком",
+        "responses": {
+          "200": { "description": "Версия", "content": { "application/json": { "schema": { "type": "object", "properties": {
+            "no": { "type": "integer" }, "note": { "type": "string" }, "created": { "type": "string" },
+            "program": { "$ref": "#/components/schemas/Program" } } } } } },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
         }
       }
     },
@@ -134,13 +169,15 @@
         "required": ["event", "days"]
       },
       "ProgramOrWrapper": {
-        "description": "Документ программы или обёртка { program, note, slug }",
+        "description": "Документ программы или обёртка { program, note, slug, base_version }",
         "oneOf": [
           { "$ref": "#/components/schemas/Program" },
           { "type": "object", "properties": {
             "program": { "$ref": "#/components/schemas/Program" },
             "note": { "type": "string", "description": "Комментарий к версии" },
-            "slug": { "type": "string", "description": "Желаемый адрес мероприятия (латиница)" } }, "required": ["program"] }
+            "slug": { "type": "string", "description": "Желаемый адрес мероприятия (латиница)" },
+            "base_version": { "type": "integer", "minimum": 0, "description": "Версия, с которой начата правка (event.version из GET). Если программу успели изменить, ответ 409 и ничего не сохраняется — перечитайте программу и повторите." } },
+            "required": ["program"] }
         ]
       },
       "ReportEntry": {
