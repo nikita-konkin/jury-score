@@ -3,6 +3,7 @@
 // Администратор (код администратора или владелец мероприятия) видит итоги всех экспертов.
 import { useState, useEffect, useRef } from "preact/hooks";
 import { api } from "../api.js";
+import { useWide, useHtmlClass } from "../hooks.js";
 import { download, plural } from "../util.js";
 import { createQueue } from "../jury/queue.js";
 import { normRec, filled, isComplete, isDone, sumOf, groupRows, computeResults, rankRows, jurorStats, stats, csvRank, csvRaw, norm } from "../jury/results.js";
@@ -253,6 +254,8 @@ function Results({ slug, sess, info, q, admin, toast, setRole }) {
   const [server, setServer] = useState(null); // { all, at }
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const wide = useWide();
+  useHtmlClass("page-wide", wide && admin);
   function load() {
     if (!admin) return;
     setBusy(true);
@@ -313,8 +316,9 @@ function Results({ slug, sess, info, q, admin, toast, setRole }) {
         : groups.map((g, gi) => (
           <div key={gi}>
             {g.s ? <h2 class="jury-sech"><span>Секция {g.s.no}</span>{g.s.title}</h2> : null}
-            {g.rows.length ? g.rows.map(r => <RankRow key={r.t.code} r={r} admin={admin} maxTotal={maxTotal} criteria={info.criteria} />)
-              : <p class="muted empty">Пока нет полных оценок</p>}
+            {!g.rows.length ? <p class="muted empty">Пока нет полных оценок</p>
+              : wide && admin ? <RankTable rows={g.rows} criteria={info.criteria} />
+              : g.rows.map(r => <RankRow key={r.t.code} r={r} admin={admin} maxTotal={maxTotal} criteria={info.criteria} />)}
           </div>
         ))}
       {admin && mode !== "stats" ? (
@@ -399,6 +403,38 @@ function Stats({ data, talks, smax }) {
           <li key={r.t.code}><span>{r.t.speaker} — {r.t.title}<small>{r.n} {plural(r.n, "оценка", "оценки", "оценок")}: {r.list.map(x => x.total).join(", ")}</small></span><b>{r.min}–{r.max}</b></li>
         ))}</ul></div>
       ) : null}
+    </div>
+  );
+}
+
+/** Рейтинг таблицей на широком экране: средние по критериям в отдельных столбцах. */
+function RankTable({ rows, criteria }) {
+  return (
+    <div class="card table-wrap">
+      <table class="wtable jtable">
+        <thead>
+          <tr>
+            <th class="num">Место</th><th>Докладчик</th><th>Доклад</th><th class="num">Секц.</th><th class="num">Средний</th>
+            <th class="num">Экспертов</th><th class="num">Мин–макс</th>
+            {criteria.map((c, i) => <th key={i} class="num" title={c}>К{i + 1}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(r => (
+            <tr key={r.t.code} class={r.rank <= 3 ? "p" + r.rank : ""}>
+              <td class="num"><span class="jplace">{r.rank}</span></td>
+              <td>{r.t.speaker}</td>
+              <td>{r.t.title}</td>
+              <td class="num">{r.t.section || ""}</td>
+              <td class="num"><b>{fmtNum(r.avg)}</b></td>
+              <td class="num">{r.n}</td>
+              <td class="num">{r.min}–{r.max}</td>
+              {r.crit.map((v, i) => <td key={i} class="num">{fmtNum(v)}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="muted small jcrit-legend">{criteria.map((c, i) => "К" + (i + 1) + " — " + c).join("; ")}</p>
     </div>
   );
 }

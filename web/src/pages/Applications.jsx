@@ -2,7 +2,7 @@
 // «Принять» добавляет доклад в выбранное заседание — сервер сохраняет новую версию программы.
 import { useState } from "preact/hooks";
 import { api, errorText } from "../api.js";
-import { useLoad } from "../hooks.js";
+import { useLoad, useWide, useHtmlClass } from "../hooks.js";
 import { copyText, download } from "../util.js";
 
 import { STATUS, FORMAT, sessionChoices, applicationsCsv } from "../apply/data.js";
@@ -23,6 +23,8 @@ export function Applications({ id, toast }) {
   const [filter, setFilter] = useState("new");
   const [open, setOpen] = useState(null); // { id, mode: "accept" | "reject" }
   const [busy, setBusy] = useState(false);
+  const wide = useWide();
+  useHtmlClass("page-wide", wide);
 
   if (res.loading && !res.data) return <p class="muted center">Загрузка…</p>;
   if (res.error) return <div class="card msg"><p>{res.error}</p><a class="btn wide" href="#/">К списку</a></div>;
@@ -65,7 +67,25 @@ export function Applications({ id, toast }) {
         ))}
       </div>
       {!shown.length ? <p class="muted empty">{apps.length ? "Здесь заявок нет" : "Заявок пока нет. Отправьте участникам ссылку на форму."}</p> : null}
-      {shown.map(a => (
+      {wide && shown.length ? (
+        <div class="card table-wrap">
+          <table class="wtable apps-table">
+            <thead>
+              <tr><th class="num">№</th><th>Статус</th><th>Докладчик</th><th>Доклад</th><th class="num">Секц.</th><th>Контакты</th><th>Подана</th><th /></tr>
+            </thead>
+            <tbody>
+              {shown.map(a => (
+                <AppRow key={a.id} a={a} program={program} event={event} busy={busy}
+                  mode={open && open.id === a.id ? open.mode : ""} setMode={m => setOpen(m ? { id: a.id, mode: m } : null)}
+                  accept={(t) => decide(a, { action: "accept", day: t.day, session: t.session }, r => `Доклад добавлен в программу: ${r.item.code}, версия ${r.version}`)}
+                  reject={(reason) => decide(a, { action: "reject", reason }, () => "Заявка отклонена")}
+                  reset={() => decide(a, { action: "reset" }, () => "Заявка снова на рассмотрении")} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {wide ? null : shown.map(a => (
         <AppCard key={a.id} a={a} program={program} event={event} busy={busy}
           mode={open && open.id === a.id ? open.mode : ""} setMode={m => setOpen(m ? { id: a.id, mode: m } : null)}
           accept={(t) => decide(a, { action: "accept", day: t.day, session: t.session }, r => `Доклад добавлен в программу: ${r.item.code}, версия ${r.version}`)}
@@ -77,9 +97,6 @@ export function Applications({ id, toast }) {
 }
 
 function AppCard({ a, program, event, busy, mode, setMode, accept, reject, reset }) {
-  const sc = sessionChoices(program, a.section);
-  const [target, setTarget] = useState(String(sc.def));
-  const [reason, setReason] = useState("");
   const sec = a.section ? program.sections.find(s => s.no === a.section) : null;
   return (
     <article class={"card app-card app-" + a.status}>
@@ -100,41 +117,73 @@ function AppCard({ a, program, event, busy, mode, setMode, accept, reject, reset
       {a.status === "rejected" && a.reason ? <p class="small">Причина: {a.reason}</p> : null}
       {a.status === "withdrawn" ? <p class="muted small">Участник отозвал заявку, его контакты удалены.{a.item_code ? ` Доклад ${a.item_code} остался в программе — уберите его в конструкторе.` : ""}</p> : null}
 
-      {mode === "accept" ? (
-        <div class="app-panel">
-          {sc.list.length ? (
-            <label class="field"><span>Заседание</span>
-              <select value={target} onChange={e => setTarget(e.currentTarget.value)}>
-                {sc.list.map((s, i) => <option key={i} value={String(i)}>{s.label}</option>)}
-              </select>
-            </label>
-          ) : <p class="pill warn">В программе нет заседаний: добавьте день и заседание в конструкторе.</p>}
-          <div class="actions">
-            <button class="btn primary" disabled={busy || !sc.list.length} onClick={() => accept(sc.list[+target])}>Добавить в программу</button>
-            <button class="btn" onClick={() => setMode("")}>Отмена</button>
-          </div>
-        </div>
-      ) : mode === "reject" ? (
-        <div class="app-panel">
-          <label class="field"><span>Причина — увидит участник</span>
-            <textarea class="auto" rows={2} maxlength={1000} value={reason} onInput={e => setReason(e.currentTarget.value)} />
-          </label>
-          <div class="actions">
-            <button class="btn danger" disabled={busy} onClick={() => reject(reason.trim())}>Отклонить заявку</button>
-            <button class="btn" onClick={() => setMode("")}>Отмена</button>
-          </div>
-        </div>
-      ) : (
-        <div class="actions">
-          {a.status === "new" ? <button class="btn primary" onClick={() => setMode("accept")}>Принять…</button> : null}
-          {a.status === "new" ? <button class="btn" onClick={() => setMode("reject")}>Отклонить…</button> : null}
-          {a.status === "accepted" || a.status === "rejected" ? (
-            <button class="btn" disabled={busy} onClick={() => (a.status !== "accepted" || window.confirm(`Вернуть заявку на рассмотрение? Доклад ${a.item_code} останется в программе — при необходимости уберите его в конструкторе.`)) && reset()}>
-              Вернуть на рассмотрение
-            </button>
-          ) : null}
-        </div>
-      )}
+      <Decision a={a} program={program} busy={busy} mode={mode} setMode={setMode} accept={accept} reject={reject} reset={reset} />
     </article>
+  );
+}
+
+/** Строка таблицы заявок на широком экране; решение раскрывается строкой ниже. */
+function AppRow({ a, program, event, busy, mode, setMode, accept, reject, reset }) {
+  const sec = a.section ? program.sections.find(x => x.no === a.section) : null;
+  return [
+    <tr key="r" class={"app-" + a.status}>
+      <td class="num">{a.no}</td>
+      <td><span class={"badge app-" + a.status}>{STATUS[a.status] || a.status}</span></td>
+      <td><b>{a.speaker}</b>{a.org || a.city ? <span class="muted small">{[a.org, a.city].filter(Boolean).join(", ")}</span> : null}</td>
+      <td>{a.title}{a.note ? <span class="muted small">{a.note}</span> : null}
+        {a.status === "accepted" ? <span class="small">В программе: <b>{a.item_code}</b> · <a href={"#/edit/" + event.id}>в конструктор</a></span> : null}
+        {a.status === "rejected" && a.reason ? <span class="small">Причина: {a.reason}</span> : null}</td>
+      <td class="num" title={sec ? sec.title : ""}>{a.section || ""}</td>
+      <td class="small">{a.email ? <a href={"mailto:" + a.email}>{a.email}</a> : null}{a.phone ? <span>{a.phone}</span> : null}</td>
+      <td class="small">{when(a.created)}</td>
+      <td>{mode ? null : <Decision a={a} program={program} busy={busy} mode="" setMode={setMode} accept={accept} reject={reject} reset={reset} />}</td>
+    </tr>,
+    mode ? (
+      <tr key="d" class="app-decide"><td colSpan={8}>
+        <Decision a={a} program={program} busy={busy} mode={mode} setMode={setMode} accept={accept} reject={reject} reset={reset} />
+      </td></tr>
+    ) : null,
+  ];
+}
+
+/** Решение по заявке: кнопки или открытая панель «принять» / «отклонить». */
+function Decision({ a, program, busy, mode, setMode, accept, reject, reset }) {
+  const sc = sessionChoices(program, a.section);
+  const [target, setTarget] = useState(String(sc.def));
+  const [reason, setReason] = useState("");
+  return mode === "accept" ? (
+    <div class="app-panel">
+      {sc.list.length ? (
+        <label class="field"><span>Заседание</span>
+          <select value={target} onChange={e => setTarget(e.currentTarget.value)}>
+            {sc.list.map((s, i) => <option key={i} value={String(i)}>{s.label}</option>)}
+          </select>
+        </label>
+      ) : <p class="pill warn">В программе нет заседаний: добавьте день и заседание в конструкторе.</p>}
+      <div class="actions">
+        <button class="btn primary" disabled={busy || !sc.list.length} onClick={() => accept(sc.list[+target])}>Добавить в программу</button>
+        <button class="btn" onClick={() => setMode("")}>Отмена</button>
+      </div>
+    </div>
+  ) : mode === "reject" ? (
+    <div class="app-panel">
+      <label class="field"><span>Причина — увидит участник</span>
+        <textarea class="auto" rows={2} maxlength={1000} value={reason} onInput={e => setReason(e.currentTarget.value)} />
+      </label>
+      <div class="actions">
+        <button class="btn danger" disabled={busy} onClick={() => reject(reason.trim())}>Отклонить заявку</button>
+        <button class="btn" onClick={() => setMode("")}>Отмена</button>
+      </div>
+    </div>
+  ) : (
+    <div class="actions">
+      {a.status === "new" ? <button class="btn primary" onClick={() => setMode("accept")}>Принять…</button> : null}
+      {a.status === "new" ? <button class="btn" onClick={() => setMode("reject")}>Отклонить…</button> : null}
+      {a.status === "accepted" || a.status === "rejected" ? (
+        <button class="btn" disabled={busy} onClick={() => (a.status !== "accepted" || window.confirm(`Вернуть заявку на рассмотрение? Доклад ${a.item_code} останется в программе — при необходимости уберите его в конструкторе.`)) && reset()}>
+          Вернуть на рассмотрение
+        </button>
+      ) : null}
+    </div>
   );
 }

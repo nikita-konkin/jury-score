@@ -246,3 +246,62 @@ export function roomsOf(doc) {
   doc.days.forEach(d => d.sessions.forEach(s => { add(s.room); s.items.forEach(it => add(it.room)); }));
   return out;
 }
+
+/** Одно написание человека: варианты имени заменяются на to, регалии после запятой сохраняются. */
+export function renamePerson(doc, variants, to) {
+  const out = clone(doc);
+  const fix = s => {
+    if (!s) return s;
+    const i = s.indexOf(",");
+    const name = (i < 0 ? s : s.slice(0, i)).trim();
+    return variants.indexOf(name) < 0 ? s : to + (i < 0 ? "" : s.slice(i));
+  };
+  out.days.forEach(d => d.sessions.forEach(s => {
+    ["chair", "cochair", "secretary"].forEach(k => { if (s[k]) s[k] = fix(s[k]); });
+    s.items.forEach(it => {
+      if (it.speaker) it.speaker = fix(it.speaker);
+      if (it.authors) it.authors = it.authors.map(fix);
+    });
+  }));
+  return out;
+}
+
+/**
+ * Люди программы для таблицы: роли и число появлений; разное написание одного человека
+ * («А.О. Рябов» и «А. О. Рябов, к.т.н.») собирается вместе и показывается в variants.
+ */
+/** Ключ человека: фамилия + инициалы («Рябов Алексей Олегович» = «А. О. Рябов» = «рябов а.о.»). */
+export function nameKey(raw) {
+  const words = String(raw || "").split(",")[0].toLowerCase().replace(/ё/g, "е").replace(/\./g, ". ").split(/\s+/).filter(Boolean);
+  const init = [], full = [];
+  words.forEach(w => { const x = w.replace(/\./g, ""); if (x) (x.length === 1 ? init : full).push(x); });
+  if (!full.length) return "";
+  if (!init.length && full.length === 3) return full[0] + full[1][0] + full[2][0];
+  return full.join("") + init.join("");
+}
+
+export function peopleTable(doc) {
+  const by = {};
+  const add = (raw, role, where) => {
+    const name = String(raw || "").split(",")[0].trim();
+    const key = nameKey(raw);
+    if (!name || !key) return;
+    const p = by[key] = by[key] || { names: {}, talks: 0, authored: 0, chairs: 0, where: [] };
+    p.names[name] = (p.names[name] || 0) + 1;
+    p[role]++;
+    if (p.where.indexOf(where) < 0) p.where.push(where);
+  };
+  doc.days.forEach((d, di) => d.sessions.forEach((s, si) => {
+    const where = "d" + di + "s" + si;
+    [s.chair, s.cochair, s.secretary].forEach(x => { if (x) add(x, "chairs", where); });
+    s.items.forEach(it => {
+      if (it.speaker) add(it.speaker, "talks", where);
+      (it.authors || []).forEach(a => { if (nameKey(a) !== nameKey(it.speaker)) add(a, "authored", where); });
+    });
+  }));
+  return Object.keys(by).map(k => {
+    const p = by[k];
+    const variants = Object.keys(p.names).sort((a, b) => p.names[b] - p.names[a] || a.localeCompare(b, "ru"));
+    return { key: k, name: variants[0], variants, talks: p.talks, authored: p.authored, chairs: p.chairs, sessions: p.where.length };
+  }).sort((a, b) => (b.variants.length > 1) - (a.variants.length > 1) || a.name.localeCompare(b.name, "ru"));
+}

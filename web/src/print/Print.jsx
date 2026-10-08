@@ -118,7 +118,7 @@ export function Print({ id, kind, toast }) {
   );
 }
 
-function ProgramDoc({ program }) {
+export function ProgramDoc({ program }) {
   const ev = program.event;
   return (
     <div class="pd-flow pd-program">

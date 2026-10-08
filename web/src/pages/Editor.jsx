@@ -1,11 +1,15 @@
-// Конструктор программы на телефоне: мероприятие → день → заседание → элементы.
+// Конструктор программы. Телефон: мероприятие → день → заседание → элементы, правка в нижних листах.
+// Десктоп (от 900 px): дерево дней и заседаний слева, листы — боковой панелью, перетаскивание мышью,
+// горячие клавиши и предпросмотр печатной программы справа.
 // Правка идёт в копии документа; проверка и время считаются тут же (ConfModel.normalize),
 // «Сохранить» отправляет документ целиком с base_version. Несохранённое лежит в localStorage.
 import { useState, useEffect, useRef } from "preact/hooks";
 import M from "../../../shared/model.js";
 import { api, errorText } from "../api.js";
+import { useWide, useHtmlClass } from "../hooks.js";
 import { dayLabel, dateRange, plural } from "../util.js";
-import { issueIndex, shiftItem, peopleOf, roomsOf } from "../edit/ops.js";
+import { issueIndex, shiftItem, moveItem, peopleOf, roomsOf } from "../edit/ops.js";
+import { ProgramDoc } from "../print/Print.jsx";
 import { renderSheet, TYPES } from "../edit/sheets.jsx";
 import { Issues, Datalist } from "../edit/ui.jsx";
 
@@ -33,6 +37,12 @@ export function Editor({ id, sub, toast }) {
   const [order, setOrder] = useState(false);
   const [sheet, setSheet] = useState(null);
   const sheetRef = useRef(null);
+  const wide = useWide();
+  useHtmlClass("page-wide", wide);
+  const [preview, setPreview] = useState(() => readPref("conf_ed_preview"));
+  const dragRef = useRef(null); // перетаскиваемый элемент { di, si, ii }
+  const [dropAt, setDropAt] = useState("");
+  const keys = useRef({});
 
   async function load(dropDraft) {
     setLoadErr("");
@@ -81,6 +91,24 @@ export function Editor({ id, sub, toast }) {
     if (bar) cls.add("has-bar"); else cls.remove("has-bar");
     return () => cls.remove("has-bar");
   }, [!!bar]);
+
+  // горячие клавиши: Ctrl+S, Ctrl+Z (вне полей ввода), Esc, Alt+↑/↓ — элемент в фокусе выше или ниже
+  useEffect(() => {
+    const on = e => {
+      const k = keys.current;
+      const key = String(e.key || "").toLowerCase();
+      const mod = e.ctrlKey || e.metaKey;
+      const field = /^(input|textarea|select)$/i.test((e.target && e.target.tagName) || "");
+      if (mod && !e.altKey && (key === "s" || key === "ы")) { e.preventDefault(); if (k.save) k.save(); }
+      else if (mod && !e.shiftKey && (key === "z" || key === "я") && !field) { e.preventDefault(); if (k.undo) k.undo(); }
+      else if (key === "escape" && sheetRef.current) { e.preventDefault(); if (k.close) k.close(); }
+      else if (e.altKey && !mod && (key === "arrowup" || key === "arrowdown") && !field && k.shift) {
+        if (k.shift(key === "arrowup" ? -1 : 1)) e.preventDefault();
+      }
+    };
+    window.addEventListener("keydown", on);
+    return () => window.removeEventListener("keydown", on);
+  }, []);
 
   // прокрутка к элементу после перехода из проверки
   useEffect(() => {
@@ -153,7 +181,76 @@ export function Editor({ id, sub, toast }) {
     } catch (e) { toast(e.message); } finally { setSaving(false); }
   }
 
-  const ctx = { doc, report: st.report, idx, commit, close, open, goTo, toast, base: st.base, eventId: st.event.id };
+  // перетаскивание мышью на десктопе: порядок в заседании и перенос в другое заседание через дерево слева
+  const dnd = wide ? {
+    start(e, from) {
+      dragRef.current = from;
+      try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", "item"); } catch (x) { /* Firefox требует setData */ }
+    },
+    end() { dragRef.current = null; setDropAt(""); },
+    overItem(e, di, si, ii) {
+      if (!dragRef.current) return;
+      e.preventDefault();
+      const r = e.currentTarget.getBoundingClientRect();
+      const at = [di, si, ii, e.clientY > r.top + r.height / 2 ? "a" : "b"].join(":");
+      if (at !== dropAt) setDropAt(at);
+    },
+    dropItem(e, di, si, ii) {
+      e.preventDefault();
+      const from = dragRef.current;
+      dragRef.current = null;
+      setDropAt("");
+      if (!from) return;
+      const r = e.currentTarget.getBoundingClientRect();
+      let to = ii + (e.clientY > r.top + r.height / 2 ? 1 : 0);
+      const same = from.di === di && from.si === si;
+      if (same && from.ii < to) to--;
+      if (same && from.ii === to) return;
+      commit(moveItem(doc, from, { di, si, ii: to }));
+    },
+    overSession(e, di, si) {
+      if (!dragRef.current) return;
+      e.preventDefault();
+      if (dropAt !== di + ":" + si) setDropAt(di + ":" + si);
+    },
+    dropSession(e, di, si) {
+      e.preventDefault();
+      const from = dragRef.current;
+      dragRef.current = null;
+      setDropAt("");
+      if (!from || (from.di === di && from.si === si)) return;
+      commit(moveItem(doc, from, { di, si }));
+      toast("Перенесено: " + (doc.days[di].sessions[si].title || "заседание") + ", " + dayLabel(doc.days[di].date));
+    },
+    mark(di, si, ii) {
+      const k = di + ":" + si + ":" + ii;
+      return dropAt === k + ":b" ? " drop-before" : dropAt === k + ":a" ? " drop-after" : "";
+    },
+    over: dropAt,
+  } : null;
+
+  keys.current = {
+    save() {
+      if (sheetRef.current) return toast("Сначала нажмите «Готово» или закройте лист");
+      if (!st.dirty) return toast("Изменений нет");
+      if (st.report.errors.length) return open({ kind: "checks" });
+      if (!saving) save(false);
+    },
+    undo, close,
+    shift(dir) {
+      const li = document.activeElement && document.activeElement.closest ? document.activeElement.closest("li.ed-it") : null;
+      if (!li || p.si == null) return false;
+      const ii = +li.id.replace("ed-it-", "");
+      const n = doc.days[p.di].sessions[p.si].items.length;
+      if (ii + dir < 0 || ii + dir >= n) return true;
+      commit(shiftItem(doc, p.di, p.si, ii, dir));
+      setTimeout(() => { const b = document.querySelector("#ed-it-" + (ii + dir) + " .ed-open"); if (b) b.focus(); }, 0);
+      return true;
+    },
+  };
+  const togglePreview = () => { const v = !preview; setPreview(v); writePref("conf_ed_preview", v); };
+
+  const ctx = { doc, report: st.report, idx, commit, close, open, goTo, toast, base: st.base, eventId: st.event.id, dnd };
   const errors = st.report.errors.length;
   let body;
   if (p.si != null && doc.days[p.di] && doc.days[p.di].sessions[p.si]) body = <SessionLevel ctx={ctx} di={p.di} si={p.si} order={order} setOrder={setOrder} base={base} />;
@@ -161,7 +258,9 @@ export function Editor({ id, sub, toast }) {
   else body = <EventLevel ctx={ctx} st={st} />;
 
   return (
-    <div class="editor">
+    <div class={"editor" + (wide ? " desk" + (preview ? " with-preview" : "") : "")}>
+      {wide ? <Tree ctx={ctx} p={p} base={base} preview={preview} togglePreview={togglePreview} /> : null}
+      <div class="ed-main">
       {stale ? (
         <div class="pill warn">
           Есть несохранённые правки к версии {stale.base}, а сейчас версия {st.base}.
@@ -172,6 +271,8 @@ export function Editor({ id, sub, toast }) {
         </div>
       ) : null}
       {body}
+      </div>
+      {wide && preview ? <PrintPreview doc={doc} id={st.event.id} /> : null}
       <Datalist id="people" values={peopleOf(doc)} />
       <Datalist id="rooms" values={roomsOf(doc)} />
       {bar ? (
@@ -249,6 +350,9 @@ function EventLevel({ ctx, st }) {
       <button class="card ed-row" onClick={() => ctx.open({ kind: "sections" })}>
         <b>Секции</b><span class="muted">{doc.sections.length ? count(doc.sections.length, ["секция", "секции", "секций"]) : "нет"}</span>
       </button>
+      <button class="card ed-row" onClick={() => ctx.open({ kind: "people" })}>
+        <b>Люди</b><span class="muted">докладчики, авторы, председатели; разное написание</span>
+      </button>
       <button class="card ed-row" onClick={() => ctx.open({ kind: "versions" })}>
         <b>История версий</b><span class="muted">открыть и вернуть прежнюю</span>
       </button>
@@ -288,6 +392,7 @@ function DayLevel({ ctx, di, base }) {
 
 function SessionLevel({ ctx, di, si, order, setOrder, base }) {
   const s = ctx.doc.days[di].sessions[si];
+  const dnd = ctx.dnd;
   const people = [s.chair && "Председатель: " + s.chair, s.cochair && "Сопредседатель: " + s.cochair, s.secretary && "Секретарь: " + s.secretary].filter(Boolean);
   return (
     <div>
@@ -308,7 +413,10 @@ function SessionLevel({ ctx, di, si, order, setOrder, base }) {
           const cls = "ed-it" + (x && x.err ? " has-err" : x ? " has-warn" : "");
           const person = it.speaker || (it.authors || []).join(", ");
           return (
-            <li key={(it.code || "") + ii} id={"ed-it-" + ii} class={cls}>
+            <li key={(it.code || "") + ii} id={"ed-it-" + ii} class={cls + (dnd && !order ? dnd.mark(di, si, ii) : "")}
+              draggable={!!dnd && !order} onDragStart={dnd && !order ? e => dnd.start(e, { di, si, ii }) : undefined}
+              onDragEnd={dnd ? dnd.end : undefined} onDragOver={dnd ? e => dnd.overItem(e, di, si, ii) : undefined}
+              onDrop={dnd ? e => dnd.dropItem(e, di, si, ii) : undefined}>
               {order ? (
                 <div class="ed-order">
                   <span class="ed-title">{it.title}</span>
@@ -337,5 +445,68 @@ function SessionLevel({ ctx, di, si, order, setOrder, base }) {
         <button class="btn" onClick={() => ctx.open({ kind: "import", di, si })}>Из таблицы…</button>
       </div>
     </div>
+  );
+}
+
+function readPref(k) { try { return localStorage.getItem(k) === "1"; } catch (e) { return false; } }
+function writePref(k, v) { try { localStorage.setItem(k, v ? "1" : "0"); } catch (e) { /* приватный режим */ } }
+
+/* ---------------- десктоп: дерево программы и предпросмотр печати ---------------- */
+
+function Dot({ x }) {
+  return x ? <i class={"tr-dot " + (x.err ? "err" : "warn")} title={x.err ? "есть ошибки" : "есть предупреждения"} /> : null;
+}
+
+function Tree({ ctx, p, base, preview, togglePreview }) {
+  const { doc, idx, dnd } = ctx;
+  return (
+    <nav class="ed-tree card" aria-label="Программа по дням и заседаниям">
+      <a class={"tr-ev" + (p.di == null ? " on" : "")} href={"#" + base}>{doc.event.title}<Dot x={idx.all} /></a>
+      {doc.days.map((d, di) => (
+        <div key={d.date} class="tr-day">
+          <a class={"tr-row" + (p.di === di && p.si == null ? " on" : "")} href={"#" + base + "/d/" + di}>
+            <b>{dayLabel(d.date)}</b><Dot x={idx["d" + di]} />
+          </a>
+          {d.sessions.map((s, si) => (
+            <a key={si} href={"#" + base + "/d/" + di + "/s/" + si}
+              class={"tr-row tr-ses" + (p.di === di && p.si === si ? " on" : "") + (dnd && dnd.over === di + ":" + si ? " drop" : "")}
+              onDragOver={e => dnd.overSession(e, di, si)} onDrop={e => dnd.dropSession(e, di, si)}>
+              <span>{s.start ? <span class="tr-time">{s.start}</span> : null}{s.title || "Заседание"}</span>
+              <small>{[s.room, s.items.length + " эл."].filter(Boolean).join(" · ")}</small>
+              <Dot x={idx["d" + di + "s" + si]} />
+            </a>
+          ))}
+        </div>
+      ))}
+      <div class="tr-foot">
+        <button class={"btn" + (preview ? " on" : "")} aria-pressed={preview} onClick={togglePreview}>Предпросмотр печати</button>
+        <p class="muted small">Ctrl+S — сохранить, Ctrl+Z — отменить, Esc — закрыть лист, Alt+↑/↓ — сдвинуть элемент.
+          Элементы можно перетаскивать мышью: внутри заседания и на заседание в этом списке.</p>
+      </div>
+    </nav>
+  );
+}
+
+function PrintPreview({ doc, id }) {
+  const wrap = useRef(null);
+  const inner = useRef(null);
+  useEffect(() => {
+    function fit() {
+      if (!wrap.current || !inner.current) return;
+      const s = Math.min(1, wrap.current.clientWidth / inner.current.offsetWidth);
+      inner.current.style.transform = "scale(" + s + ")";
+      wrap.current.style.height = Math.ceil(inner.current.offsetHeight * s) + "px";
+    }
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  });
+  return (
+    <aside class="ed-preview card" aria-label="Предпросмотр печатной программы">
+      <div class="row-between"><b>Как будет напечатано</b><a href={"#/print/" + id + "/program"}>Документы</a></div>
+      <div class="print-scale" ref={wrap}>
+        <div class="print-doc" ref={inner}><ProgramDoc program={doc} /></div>
+      </div>
+    </aside>
   );
 }

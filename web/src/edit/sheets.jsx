@@ -8,7 +8,7 @@ import { dayLabel, shortDate } from "../util.js";
 import { Program } from "../components/Program.jsx";
 import {
   clone, applyItemForm, itemForm, duplicateItem, removeAt, moveItem, shiftSession, moveSession,
-  addDay, setDay, parsePath, sessionSection,
+  addDay, setDay, parsePath, sessionSection, peopleTable, renamePerson,
 } from "./ops.js";
 import { readTable, findHeader, guessMapping, rowsToItems, FIELDS } from "./table.js";
 import { Sheet, Field, Check, IssueList, bind } from "./ui.jsx";
@@ -605,5 +605,39 @@ export function renderSheet(sheet, ctx) {
   if (k === "versions") return <VersionsSheet key={key} ctx={ctx} />;
   if (k === "import") return <ImportSheet key={key} ctx={ctx} di={sheet.di} si={sheet.si} />;
   if (k === "preview") return <PreviewSheet key={key} ctx={ctx} />;
+  if (k === "people") return <PeopleSheet key={key} ctx={ctx} />;
   return null;
+}
+
+/** Люди программы: роли, разное написание одного человека и приведение к одному. */
+function PeopleSheet({ ctx }) {
+  const list = peopleTable(ctx.doc);
+  const dup = list.filter(p => p.variants.length > 1).length;
+  return (
+    <Sheet title={"Люди: " + list.length} onClose={ctx.close}>
+      {dup ? <p class="pill warn">Разное написание одного человека: {dup}. «Одинаково» приводит все варианты к первому.</p>
+        : <p class="muted small">Каждый человек записан везде одинаково.</p>}
+      <div class="table-wrap">
+        <table class="wtable people">
+          <thead><tr><th>Человек</th><th title="Докладчик">Докл.</th><th title="Соавтор">Соавт.</th><th title="Председатель, сопредседатель, секретарь">Ведёт</th></tr></thead>
+          <tbody>
+            {list.map(p => (
+              <tr key={p.key} class={p.variants.length > 1 ? "dup" : ""}>
+                <td>
+                  {p.name}
+                  {p.variants.length > 1 ? (
+                    <span class="people-var">
+                      <span class="muted small">также: {p.variants.slice(1).join("; ")}</span>
+                      <button class="btn" onClick={() => ctx.commit(renamePerson(ctx.doc, p.variants.slice(1), p.name), "одно написание: " + p.name)}>Одинаково</button>
+                    </span>
+                  ) : null}
+                </td>
+                <td>{p.talks || ""}</td><td>{p.authored || ""}</td><td>{p.chairs || ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Sheet>
+  );
 }

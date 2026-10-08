@@ -57,3 +57,23 @@ test("секция нового доклада — как у последнег�
   assert.equal(O.sessionSection({ items: [{ type: "activity" }] }), null);
   assert.equal(O.sessionSection({ items: [] }), null);
 });
+
+test("люди: одно написание по фамилии и инициалам, роли, приведение к одному", async () => {
+  const O = await ops();
+  assert.equal(O.nameKey("Рябов Алексей Олегович"), O.nameKey("А. О. Рябов, д.т.н."));
+  assert.equal(O.nameKey("рябов а.о."), "рябовао");
+  assert.notEqual(O.nameKey("А. О. Рябов"), O.nameKey("А. П. Рябов"));
+  const doc = { days: [{ date: "2026-10-07", sessions: [{ chair: "А. О. Рябов, д.т.н.", items: [
+    { type: "talk", title: "a", speaker: "Рябов Алексей Олегович", authors: ["Рябов Алексей Олегович", "Б. Б. Петров"] },
+    { type: "talk", title: "b", speaker: "А. О. Рябов" },
+    { type: "talk", title: "c", speaker: "Б. Б. Петров" },
+  ] }] }] };
+  const t = O.peopleTable(doc);
+  assert.deepEqual(t.map(p => [p.name, p.variants.length, p.talks, p.authored, p.chairs]),
+    [["А. О. Рябов", 2, 2, 0, 1], ["Б. Б. Петров", 1, 1, 1, 0]], "разное написание — первым");
+  const fixed = O.renamePerson(doc, ["Рябов Алексей Олегович"], "А. О. Рябов");
+  assert.equal(fixed.days[0].sessions[0].items[0].speaker, "А. О. Рябов");
+  assert.deepEqual(fixed.days[0].sessions[0].items[0].authors, ["А. О. Рябов", "Б. Б. Петров"]);
+  assert.equal(fixed.days[0].sessions[0].chair, "А. О. Рябов, д.т.н.", "регалии сохраняются");
+  assert.equal(O.peopleTable(fixed)[0].variants.length, 1);
+});

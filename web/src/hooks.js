@@ -28,3 +28,30 @@ export function useLoad(fn, deps) {
   useEffect(run, [run]);
   return Object.assign({}, state, { reload: run });
 }
+
+/** Широкий экран (десктоп): true от min px (по умолчанию 900), обновляется при изменении окна. */
+export function useWide(min) {
+  const q = "(min-width: " + (min || 900) + "px)";
+  const get = () => !!(window.matchMedia && window.matchMedia(q).matches);
+  const [wide, setWide] = useState(get);
+  useEffect(() => {
+    if (!window.matchMedia) return undefined;
+    const mq = window.matchMedia(q);
+    const on = () => setWide(mq.matches);
+    on();
+    // Safari 12 знает только addListener
+    if (mq.addEventListener) mq.addEventListener("change", on); else mq.addListener(on);
+    return () => { if (mq.removeEventListener) mq.removeEventListener("change", on); else mq.removeListener(on); };
+  }, [q]);
+  return wide;
+}
+
+/** Класс у <html>, пока on и компонент на экране (например, «page-wide» — широкая страница на десктопе). */
+export function useHtmlClass(cls, on) {
+  useEffect(() => {
+    if (!on) return undefined;
+    const list = document.documentElement.classList;
+    list.add(cls);
+    return () => list.remove(cls);
+  }, [cls, !!on]);
+}
