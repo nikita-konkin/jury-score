@@ -131,6 +131,8 @@ export function Editor({ id, sub, toast }) {
   }
   function commit(input, note) {
     const r = M.normalize(input);
+    // «Готово» в листе без правок — не изменение: ни панели «Сохранить», ни шага отмены
+    if (JSON.stringify(r.doc) === JSON.stringify(st.doc)) return;
     change(Object.assign({}, st, { doc: r.doc, report: r.report, dirty: true, past: st.past.concat([st.doc]).slice(-30), note: note || st.note }));
   }
   function undo() {

@@ -21,8 +21,8 @@ function freePort() {
   });
 }
 
-/** Регистрирует before/after в node:test и возвращает помощники. */
-function setup(test) {
+/** Регистрирует before/after в node:test и возвращает помощники. opts.env — переменные сервера (или async-функция). */
+function setup(test, opts) {
   const srv = { available, base: "", dataDir: "", suToken: "", log: "" };
   let server = null, started;
   // before-хуки тестов могут выполняться раньше запуска — им нужно дождаться srv.ready()
@@ -60,7 +60,9 @@ function setup(test) {
     assert.equal(up.status, 0, up.stderr || up.stdout);
     const port = await freePort();
     srv.base = `http://127.0.0.1:${port}`;
-    server = spawn(BIN, ["serve", "--http", `127.0.0.1:${port}`, "--automigrate=false"].concat(pbDirs(srv.dataDir)), { stdio: ["ignore", "pipe", "pipe"] });
+    const extra = opts && opts.env ? (typeof opts.env === "function" ? await opts.env() : opts.env) : {};
+    server = spawn(BIN, ["serve", "--http", `127.0.0.1:${port}`, "--automigrate=false"].concat(pbDirs(srv.dataDir)),
+      { stdio: ["ignore", "pipe", "pipe"], env: Object.assign({}, process.env, extra) });
     server.stdout.on("data", d => { srv.log += d; });
     server.stderr.on("data", d => { srv.log += d; });
     for (let i = 0; ; i++) {

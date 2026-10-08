@@ -1,0 +1,16 @@
+.git
+**/node_modules
+dist
+pb/pb_data
+legacy
+docs
+fixtures
+tests
+tools
+worker
+*.pdf
+*.log
+.env
+.env.*
+deploy/.env
+.claude

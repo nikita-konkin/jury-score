@@ -63,7 +63,7 @@ function ItemSheet({ ctx, di, si, ii, type }) {
     return f;
   });
   const [err, setErr] = useState("");
-  const set = bind(form, setForm);
+  const set = bind(setForm);
   const isTalk = form.type === "talk" || form.type === "plenary";
   const regs = ctx.doc.event.regulations || M.DEFAULT_REGULATIONS;
   const defDur = regs[REG_OF[form.type] || "other_min"];
@@ -181,7 +181,7 @@ function SessionSheet({ ctx, di, si }) {
     return f;
   });
   const [err, setErr] = useState("");
-  const set = bind(form, setForm);
+  const set = bind(setForm);
 
   function apply() {
     if (badTime(form.start) || badTime(form.end)) return setErr("Время — в формате ЧЧ:ММ");
@@ -251,7 +251,7 @@ function DaySheet({ ctx, di }) {
   const lastDate = ctx.doc.days.length ? ctx.doc.days[ctx.doc.days.length - 1].date : ctx.doc.event.date_from;
   const [form, setForm] = useState({ date: d ? d.date : nextDate(lastDate, !ctx.doc.days.length), title: d && d.title ? d.title : "" });
   const [err, setErr] = useState("");
-  const set = bind(form, setForm);
+  const set = bind(setForm);
 
   function apply() {
     const date = M.normDate(form.date);
@@ -317,7 +317,7 @@ function EventSheet({ ctx }) {
     return f;
   });
   const [err, setErr] = useState("");
-  const set = bind(form, setForm);
+  const set = bind(setForm);
   const REG_LABEL = { talk_min: "Доклад", plenary_min: "Пленарный", break_min: "Перерыв", lunch_min: "Обед", other_min: "Прочее" };
 
   function apply() {

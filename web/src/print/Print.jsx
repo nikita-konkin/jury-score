@@ -1,8 +1,9 @@
 // Печатные документы (#/print/<id>/<вид>): программа, таблички «на дверь», протоколы секций, сертификаты,
 // итоги конкурса докладов и дипломы (оценки жюри видит только владелец).
-// На экране — лист A4 в масштабе ширины телефона; «Печать / PDF» — печать браузера с @page, «Word» — .docx.
+// На экране — лист A4 в масштабе ширины телефона; «Печать / PDF» — печать браузера с @page, «Word» — .docx,
+// «Скачать PDF» — PDF на сервере (Gotenberg), если сервер сообщает features.pdf и пользователь вошёл.
 import { useState, useEffect, useRef } from "preact/hooks";
-import { api, errorText, user } from "../api.js";
+import { api, auth, errorText, user } from "../api.js";
 import { useLoad, go } from "../hooks.js";
 import { download } from "../util.js";
 import { programRows, protocols, doors, certificates, contest, diplomas, nameOnly, datesLine, dayHeading } from "./data.js";
@@ -36,6 +37,23 @@ async function loadJury(id) {
 }
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
+let features = null; // GET /api/v1 → features, один раз за сеанс
+const loadFeatures = () => features || (features = api("GET", "/api/v1").then(r => r.json.features || {}, () => ({})));
+
+/** PDF листа на сервере: разметка документа → POST /api/v1/pdf → файл. */
+async function serverPdf(html, landscape, name, title) {
+  const res = await fetch("/api/v1/pdf", {
+    method: "POST", headers: { Authorization: auth.state ? auth.state.token : "", "Content-Type": "application/json" },
+    body: JSON.stringify({ html, landscape, name, title }),
+  });
+  if (res.status !== 200) {
+    let msg = "Ошибка " + res.status;
+    try { const j = await res.json(); if (j.message) msg = j.message; } catch (e) { /* не JSON */ }
+    throw new Error(msg);
+  }
+  download(name + ".pdf", await res.blob(), "application/pdf");
+}
+
 export function Print({ id, kind, toast }) {
   const res = useLoad(async () => {
     const r = await api("GET", `/api/v1/events/${encodeURIComponent(id)}/program`);
@@ -45,6 +63,8 @@ export function Print({ id, kind, toast }) {
   const juryKind = kind === "results" || kind === "diplomas";
   const jury = useLoad(() => (juryKind ? loadJury(id) : null), [id, juryKind]);
   const [day, setDay] = useState("");
+  const [pdf, setPdf] = useState(false); // доступен PDF на сервере
+  const [busy, setBusy] = useState(false);
   const wrap = useRef(null);
   const inner = useRef(null);
   const k = KINDS.find(x => x[0] === kind) || KINDS[0];
@@ -64,6 +84,8 @@ export function Print({ id, kind, toast }) {
     return () => { clearTimeout(t); window.removeEventListener("resize", fit); };
   });
 
+  useEffect(() => { if (user()) loadFeatures().then(f => setPdf(!!f.pdf)); }, []);
+
   if (res.loading) return <p class="muted center">Загрузка…</p>;
   if (res.error) return <div class="card msg"><p>{res.error}</p><a class="btn wide" href="#/">К списку</a></div>;
   const { event, program } = res.data;
@@ -74,6 +96,19 @@ export function Print({ id, kind, toast }) {
     const blocks = k[0] === "protocols" ? protocolBlocks(program, day) : programBlocks(program);
     download(name + ".docx", docx(blocks), DOCX);
     if (toast) toast("Файл Word скачан");
+  }
+
+  async function savePdf() {
+    if (busy || !inner.current) return;
+    setBusy(true);
+    try {
+      await serverPdf(inner.current.innerHTML, landscape, name, event.title);
+      if (toast) toast("PDF скачан");
+    } catch (e) {
+      if (toast) toast(e.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   let body;
@@ -106,10 +141,11 @@ export function Print({ id, kind, toast }) {
           </label>
         ) : null}
         <div class="actions">
-          <button class="btn primary" onClick={() => window.print()}>Печать / PDF</button>
+          {pdf ? <button class="btn primary" disabled={busy || (juryKind && !jury.data)} onClick={savePdf}>{busy ? "Готовим PDF…" : "Скачать PDF"}</button> : null}
+          <button class={"btn" + (pdf ? "" : " primary")} onClick={() => window.print()}>{pdf ? "Печать" : "Печать / PDF"}</button>
           {k[0] === "program" || k[0] === "protocols" ? <button class="btn" onClick={word}>Word</button> : null}
         </div>
-        <p class="muted small">Лист A4{landscape ? ", альбомный" : ""}. На телефоне: «Печать / PDF» → «Сохранить как PDF» или «Поделиться».</p>
+        <p class="muted small">Лист A4{landscape ? ", альбомный" : ""}. {pdf ? "«Скачать PDF» — одинаковый файл на любом устройстве." : "На телефоне: «Печать / PDF» → «Сохранить как PDF» или «Поделиться»."}</p>
       </div>
       <div class="print-scale" ref={wrap}>
         <div class={"print-doc" + (landscape ? " landscape" : "")} ref={inner}>{body}</div>

@@ -18,7 +18,7 @@ export function Create({ from, toast }) {
   const [err, setErr] = useState("");
   const [report, setReport] = useState(null);
   const [busy, setBusy] = useState(false);
-  const set = bind(form, setForm);
+  const set = bind(setForm);
 
   if (!user()) return <div class="card msg"><p>Войдите, чтобы создать мероприятие.</p><a class="btn wide" href="#/">Войти</a></div>;
   if (src.loading) return <p class="muted center">Загрузка…</p>;

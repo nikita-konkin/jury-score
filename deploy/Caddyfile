@@ -1,0 +1,24 @@
+# HTTPS-сертификат Let's Encrypt выпускается автоматически для {$CONF_DOMAIN}.
+# /mcp — MCP-сервер для чат-ботов, всё остальное — PocketBase (сайт, /api, realtime, дашборд /_/).
+{$CONF_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	handle /mcp* {
+		reverse_proxy mcp:8091
+	}
+
+	handle {
+		# тело запроса: документ программы до 512 КБ, PDF-разметка до 3 МБ, файлы PocketBase — свои лимиты
+		request_body {
+			max_size 16MB
+		}
+		reverse_proxy pocketbase:8090
+	}
+}

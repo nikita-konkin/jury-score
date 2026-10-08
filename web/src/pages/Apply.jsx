@@ -77,10 +77,14 @@ function ApplyForm({ slug, toast }) {
     );
   }
 
+  // от прежнего состояния, а не из замыкания: автозаполнение браузера шлёт input в несколько полей до перерисовки
   const set = k => e => {
-    const next = Object.assign({}, form, { [k]: e.currentTarget.value });
-    setForm(next);
-    LS.set(kDraft, next);
+    const v = e.currentTarget.value;
+    setForm(prev => {
+      const next = Object.assign({}, prev, { [k]: v });
+      LS.set(kDraft, next);
+      return next;
+    });
     if (err.field === k) setErr({ field: "", message: "" });
   };
   const field = (k, label, input, hint) => (

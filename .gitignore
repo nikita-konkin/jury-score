@@ -8,3 +8,4 @@ pb_data/
 .env.*
 *.log
 .claude/settings.local.json
+!.env.example

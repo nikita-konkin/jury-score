@@ -9,6 +9,7 @@ routerAdd("GET", "/api/v1", (e) => {
   return e.json(200, {
     service: "conf-kit", api: "v1", schema: S.M.SCHEMA_ID,
     docs: { llms: "/llms.txt", openapi: "/openapi.json", schema: "/schema/program.v1.json" },
+    features: { pdf: require(`${__hooks}/lib/pdf.js`).enabled() },
   });
 });
 

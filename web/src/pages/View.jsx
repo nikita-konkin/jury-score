@@ -64,7 +64,7 @@ export function View({ url, preview, toast }) {
   const action = preview ? null : it => (
     <a class="btn" href={icsPath + "?item=" + encodeURIComponent(it.code)}>В календарь</a>
   );
-  const setFilter = k => e => setF(Object.assign({}, f, { [k]: e.currentTarget.value }));
+  const setFilter = k => e => { const v = e.currentTarget.value; setF(prev => Object.assign({}, prev, { [k]: v })); };
 
   function share() {
     if (navigator.share) navigator.share({ title: program.event.title, url: pageUrl }).catch(() => {});

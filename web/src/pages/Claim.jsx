@@ -18,7 +18,8 @@ export function Claim({ token, toast }) {
   const [err, setErr] = useState("");
   const me = user();
 
-  const set = k => e => setForm(Object.assign({}, form, { [k]: e.target.value }));
+  // от прежнего состояния: менеджер паролей заполняет e-mail и пароль до перерисовки
+  const set = k => e => { const v = e.target.value; setForm(prev => Object.assign({}, prev, { [k]: v })); };
 
   async function submit(e) {
     e.preventDefault();

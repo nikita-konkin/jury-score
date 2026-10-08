@@ -6,19 +6,21 @@
 
 ## Архитектура
 
-- Сервер: PocketBase 0.40 + SQLite на VPS в РФ (`conf.konkin-nikita.ru`, пока не развёрнут).
+- Сервер: PocketBase 0.40 + SQLite на VPS в РФ (`conf.konkin-nikita.ru`, пока не развёрнут). Выкладка — `deploy/` (docker compose: Caddy, PocketBase, MCP, Gotenberg), см. `deploy/README.md`.
   - `pb/pb_migrations/` — коллекции программы (`events`, `rooms`, `sections`, `days`, `sessions`, `items`, `program_versions`, `users.is_admin`) и ботов (`api_keys`, `feedback`, `feedback_groups`, токены черновика и приглашения в `events`), жюри (`scores`, `scores_deleted`, коды комиссии в `events`), заявки (`applications`) и задачи обработчика (`jobs`).
   - `pb/pb_hooks/api_v1.pb.js` — маршруты `/api/v1`. Логика — в `pb/pb_hooks/lib/`: `program_store.js` (документ ↔ строки, версии), `access.js` (ключи, токены, права, лимиты, `baseUrl`), `feedback_store.js` (группировка, ответ боту, changelog), `maintenance.js` (очистка черновиков, сводка). `cron.pb.js` — расписание, `cli.pb.js` — команды `pocketbase apikey …` и `pocketbase admin <email>`.
   - `pb/pb_hooks/jury.pb.js` + `lib/jury_store.js` — жюри `/api/jury/{id}` (перенос `Code.gs`) и коды комиссии `/api/v1/events/{id}/jury`.
   - `pb/pb_hooks/apply.pb.js` + `lib/apply_store.js` — заявки: форма `/api/apply/{id}`, своя заявка по токену, модерация `/api/v1/events/{id}/applications`.
   - `pb/pb_hooks/jobs.pb.js` + `lib/jobs_store.js` — задачи локального обработчика (`jobs`), ключи `process_jobs` для своего компьютера.
+  - `pb/pb_hooks/pdf.pb.js` + `lib/pdf.js` — `POST /api/v1/pdf`: разметка листа от браузера + `dist/app.css` + `@page` → Gotenberg (`CONF_GOTENBERG_URL`), только вошедшим, 60 в час. `GET /api/v1` → `features.pdf`. `$http.send` отдаёт `body` массивом байтов — его можно сразу в `e.blob`.
+  - `pb/pb_hooks/settings.pb.js` + `lib/env_settings.js` — при запуске переносит `CONF_*` из окружения в настройки PocketBase (адрес, SMTP, бэкапы и S3, доверенный прокси, лимиты); пустая переменная настройку не трогает.
   - Ссылки в ответах (`invite_url`, `preview_url`) строятся от `CONF_PUBLIC_URL`, затем от Application URL из настроек (если не по умолчанию), затем от хоста запроса.
 - Фронтенд `web/`: Preact + esbuild (`web/build.mjs`) → `dist/`, его раздаёт PocketBase (`--publicDir`). Бандлы iife (динамического import нет в Chrome 61–62 и Firefox 60–66): `app.js` (бюджет 80 КБ gzip) и `editor.js` — конструктор, грузится тегом `<script>` только на `#/edit` и `#/create`. preact, `api.js`, `util.js`, `hooks.js`, `Program.jsx` конструктор берёт у `app.js` через `window.__confShared` (плагин `sharedFromApp` в `build.mjs`): второй экземпляр preact ломает хуки. Новый общий модуль добавляется и в `SHARED` в `build.mjs`, и в `window.__confShared` в `app.jsx`. Маршруты на хэше: `#/claim/<токен>`, `#/preview/<токен>`, `#/e/<slug>`, `#/my/<id>`, `#/new` (вставка ответа чат-бота). `web/src/gate.js` (ES5, встраивается в `<head>`) показывает «Браузер устарел» и включает класс `lite`.
 - Конструктор `#/edit/<id>[/d/<день>[/s/<заседание>]]` (`web/src/pages/Editor.jsx`): правка идёт в копии документа, после каждого действия — `ConfModel.normalize` (время и проверки на месте), «Сохранить» шлёт документ целиком с `base_version` (409 — программу изменили в другом месте). Несохранённое пишется в localStorage сразу в `commit` (не в эффекте — иначе теряется при мгновенной перезагрузке). Нижние листы — `web/src/edit/sheets.jsx`; лист открывается с `history.pushState`, чтобы «Назад» на телефоне закрывал его.
   - Чистая логика — `web/src/edit/ops.js` (перемещения, форма элемента, шаблон, пустая программа) и `table.js` (импорт .xlsx/.csv/.docx без SheetJS: zip через fflate, XML регулярками). Их тесты — `tests/unit/edit_*.test.js`; `web/package.json` с `"type": "module"` нужен, чтобы Node импортировал эти файлы.
   - Время элемента: `anchor: true` — закреплено, иначе считается по порядку. При применении формы `end` всегда удаляется, иначе старый конец перебьёт новую длительность.
 - Публичная программа `#/e/<адрес>` (`web/src/pages/View.jsx`, логика — `web/src/public/live.js`): «сейчас / далее» по поясу `event.timezone`, поиск и фильтры, обновление через realtime PocketBase (подписка `events/<id>`) с запасным опросом, копия в localStorage на случай без связи.
-- Печатные документы `#/print/<id>/<вид>` (`web/src/print/`, в `editor.js`): программа в виде официальной программы RWP-2026, таблички «на дверь», протоколы секций, сертификаты. `data.js` — общие данные для HTML и Word, `docx.js` — .docx без библиотеки (WordprocessingML + fflate). Печать — браузерная с `@page`; PDF на сервере (Gotenberg) — при выкладке на VPS. e2e проверяет PDF через pypdf и Word через python-docx.
+- Печатные документы `#/print/<id>/<вид>` (`web/src/print/`, в `editor.js`): программа в виде официальной программы RWP-2026, таблички «на дверь», протоколы секций, сертификаты. `data.js` — общие данные для HTML и Word, `docx.js` — .docx без библиотеки (WordprocessingML + fflate). Печать — браузерная с `@page`; «Скачать PDF» — на сервере через Gotenberg, если `features.pdf` и пользователь вошёл. e2e проверяет PDF через pypdf и Word через python-docx.
 - `shared/ics.js` — календарь iCalendar для goja и браузера: `GET /api/v1/events/{id}/program.ics` (заседания; `?items=1` — все элементы; `?item=<код>` — один). Время в UTC по таблице поясов РФ (летнего времени нет); незнакомый пояс — «плавающее» время.
 - MCP-сервер `mcp/` — обёртка над `/api/v1` (stdio и Streamable HTTP), см. `mcp/README.md`.
 - Инструкции для ботов: `public/llms.txt`, `public/openapi.json`. Правила формата в `llms.txt` должны совпадать с поведением `model.js`.
@@ -96,5 +98,6 @@ npm run build                # dist/
 npm run pb:superuser -- admin@example.com 'пароль'   # суперпользователь в pb/pb_data
 npm run pb                   # сборка и serve --dev на 127.0.0.1:8090, дашборд /_/
 npm run worker -- --server http://127.0.0.1:8090 --key ck_…   # локальный обработчик, LM Studio на :1234
+python tests/deploy/smoke.py [--old-browsers] [--keep]       # стек deploy/ в локальном Docker на 127.0.0.1:8080
 node scripts/pb.js apikey create "Claude" create_events,update_own,read_own,send_feedback
 ```

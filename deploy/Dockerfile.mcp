@@ -1,0 +1,12 @@
+# MCP-сервер conf-kit (Streamable HTTP) — обёртка над /api/v1 PocketBase. Сборка из корня репозитория.
+FROM node:22-alpine
+WORKDIR /app/mcp
+COPY mcp/package.json mcp/package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+COPY mcp/server.js ./
+COPY public/schema /app/public/schema
+USER node
+ENV CONF_MCP_HOST=0.0.0.0 CONF_MCP_PORT=8091
+EXPOSE 8091
+HEALTHCHECK --interval=30s --timeout=5s CMD wget -q -O /dev/null http://127.0.0.1:8091/health || exit 1
+CMD ["node", "server.js", "--http"]

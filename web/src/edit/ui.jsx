@@ -16,12 +16,13 @@ export function Sheet({ title, onClose, children, footer }) {
   );
 }
 
-/** Состояние формы: [form, set(key) → обработчик onInput/onChange, patch]. */
-export function bind(form, setForm) {
+/** Состояние формы: set(key) → обработчик onInput/onChange. Обновление — от прежнего состояния:
+ * несколько событий до перерисовки (автозаполнение) не затирают друг друга. */
+export function bind(setForm) {
   return key => e => {
     const t = e.currentTarget;
     const v = t.type === "checkbox" ? t.checked : t.value;
-    setForm(Object.assign({}, form, { [key]: v }));
+    setForm(prev => Object.assign({}, prev, { [key]: v }));
   };
 }
 

@@ -61,7 +61,11 @@ def main():
             form = user.locator(".apply-form")
             expect(form).to_contain_text("Тезисы — до одной страницы.")
             expect(user.locator(".consent")).to_contain_text(OPERATOR)
-            user.get_by_label("Докладчик — фамилия и инициалы *").fill("Иванова А. Б.")
+            # автозаполнение браузера: input в несколько полей до перерисовки — значения не затирают друг друга
+            user.evaluate("""() => { for (const [id, v] of [["ap-speaker", "Иванова А. Б."], ["ap-email", "ivanova@example.com"]]) {
+              const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("input", { bubbles: true })); } }""")
+            expect(user.get_by_label("Докладчик — фамилия и инициалы *")).to_have_value("Иванова А. Б.")
+            expect(user.get_by_label("E-mail для связи *")).to_have_value("ivanova@example.com")
             user.get_by_label("Авторы").fill("Иванова А. Б.\nПетров В. Г.")
             user.get_by_label("Название доклада *").fill("Распространение радиоволн в тропосфере")
             user.get_by_label("Секция *").select_option("2")
