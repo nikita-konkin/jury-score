@@ -135,6 +135,30 @@ test("ответ в стиле LLM: синонимы, time-диапазон, а�
   assert.ok(codes(report.info).includes("AUTHORS_SPLIT"));
 });
 
+test("кавычки снимаются, только если пара обнимает всё название", () => {
+  const titles = [
+    ["«Название доклада»", "Название доклада"],
+    ["\"Title\"", "Title"],
+    ["„Ионосфера“", "Ионосфера"],
+    ["“Ionosphere”", "Ionosphere"],
+    ["«Система «Ионозонд»»", "Система «Ионозонд»"],
+    ["Разработка системы «Ионозонд»", "Разработка системы «Ионозонд»"],
+    ["«Ионозонд» как учебный стенд", "«Ионозонд» как учебный стенд"],
+    ["«А» и «Б»", "«А» и «Б»"],
+    ["\"А\" и \"Б\"", "\"А\" и \"Б\""],
+    ["Обычное название", "Обычное название"],
+  ];
+  const { doc, report } = M.normalize(mini(
+    [{ title: "Утро", room: "ауд. 1", start: "09:00", items: titles.map(([t], i) => talk(t, "А. А. Иванов" + i)) }],
+    { event: { title: "Осенняя школа «Радиоволны-2026»", date_from: "2026-10-07" } }));
+  assert.deepEqual(report.errors, []);
+  assert.equal(doc.event.title, "Осенняя школа «Радиоволны-2026»");
+  assert.deepEqual(allItems(doc).map(it => it.title), titles.map(([, t]) => t));
+  assert.equal(M.normalize({ schema: "conf.program/v1", event: { title: "«Радиоволны-2026»", date_from: "2026-10-07" }, days: [] }).doc.event.title,
+    "Радиоволны-2026");
+  assert.deepEqual(M.normalize(doc).doc, doc);
+});
+
 test("зал занят: пересечение двух заседаний в одном зале", () => {
   const { report } = M.normalize(mini([
     { room: "ауд. 431", start: "10:00", items: [talk("А", "А. А. Первый"), talk("Б", "Б. Б. Второй")] },

@@ -56,7 +56,30 @@
   const isObj = v => v !== null && typeof v === "object" && !Array.isArray(v);
   const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const clean = s => (s == null ? "" : String(s)).replace(/\s+/g, " ").trim();
-  const stripQuotes = s => clean(s).replace(/^[«"“„']+|[»"”']+$/g, "").trim();
+  // Кавычки снимаются, только если одна пара обнимает всю строку: «Доклад» → Доклад.
+  // «Ионозонд» как стенд, Система «Ионозонд», «А» и «Б» остаются как есть.
+  const QUOTE_PAIRS = { "«": "»", "„": "“”", "“": "”", "\"": "\"", "'": "'" };
+  function quotesBalanced(s, open, close) {
+    if (close === open) return s.indexOf(open) < 0; // у " и ' не отличить открывающую от закрывающей
+    let depth = 0;
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charAt(i);
+      if (c === open) depth++;
+      else if (close.indexOf(c) >= 0 && --depth < 0) return false;
+    }
+    return depth === 0;
+  }
+  function stripQuotes(s) {
+    let t = clean(s);
+    for (;;) {
+      const open = t.charAt(0);
+      const close = has(QUOTE_PAIRS, open) ? QUOTE_PAIRS[open] : "";
+      if (t.length < 2 || !close || close.indexOf(t.charAt(t.length - 1)) < 0) return t;
+      const inner = t.slice(1, -1);
+      if (!quotesBalanced(inner, open, close)) return t;
+      t = inner.trim();
+    }
+  }
 
   function assign(target) {
     for (let i = 1; i < arguments.length; i++) {
